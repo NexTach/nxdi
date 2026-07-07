@@ -14,12 +14,12 @@ export function changeRateFromCandles(candles: MarketCandle[]) {
 }
 
 function previousCloseFromChart(chart?: MarketChart | null) {
-  if (typeof chart?.previousClose === "number" && chart.previousClose > 0) {
-    return chart.previousClose;
+  const previousCandleClose = chart?.candles.at(-2)?.close;
+  if (typeof previousCandleClose === "number" && previousCandleClose > 0) {
+    return previousCandleClose;
   }
 
-  const previousCandleClose = chart?.candles.at(-2)?.close;
-  return typeof previousCandleClose === "number" && previousCandleClose > 0 ? previousCandleClose : undefined;
+  return typeof chart?.previousClose === "number" && chart.previousClose > 0 ? chart.previousClose : undefined;
 }
 
 export function portfolioChangeRateFromMarketValue({

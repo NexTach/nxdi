@@ -43,6 +43,16 @@ describe("portfolioChangeRateFromMarketValue", () => {
     assert.equal(rate, 0.1);
   });
 
+  it("prefers the previous candle close over range chartPreviousClose", () => {
+    const rate = portfolioChangeRateFromMarketValue({
+      holdings: [holding({})],
+      charts: new Map([["TEST", chart({ previousClose: 80 })]]),
+      exchangeRate: 1300
+    });
+
+    assert.equal(rate, 0.1);
+  });
+
   it("uses current exchange rate for USD previous market value", () => {
     const rate = portfolioChangeRateFromMarketValue({
       holdings: [
@@ -55,7 +65,18 @@ describe("portfolioChangeRateFromMarketValue", () => {
           marketValueKrw: 143000
         })
       ],
-      charts: new Map([["TEST", chart({ currency: "USD", marketCountry: "NASDAQ", previousClose: 50 })]]),
+      charts: new Map([[
+        "TEST",
+        chart({
+          currency: "USD",
+          marketCountry: "NASDAQ",
+          previousClose: 45,
+          candles: [
+            { date: "2026-01-01T00:00:00.000Z", open: 45, high: 55, low: 44, close: 50 },
+            { date: "2026-01-02T00:00:00.000Z", open: 50, high: 60, low: 49, close: 60 }
+          ]
+        })
+      ]]),
       exchangeRate: 1300
     });
 
