@@ -53,7 +53,6 @@ export default async function ProductPage() {
       <Top
         backLink={{ href: "/", label: "포트폴리오" }}
         title="상품 설명"
-        description="서비스의 상품 구조, 확인 가능한 정보, 운영 원칙을 Markdown 문서로 관리합니다."
         actions={
           <ButtonLink href="/intents">
             의향서 작성

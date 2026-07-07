@@ -6,7 +6,6 @@ import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
   AppShell,
   Badge,
-  CheckboxField,
   Empty,
   Field,
   Form,
@@ -148,10 +147,6 @@ export default async function IntentsPage({ searchParams }: IntentPageProps) {
             <Field htmlFor="investContact" label="전화번호 또는 이메일">
               <input id="investContact" name="contact" placeholder="010-0000-0000 또는 name@example.com" required />
             </Field>
-            <CheckboxField>
-              <input type="checkbox" name="guardianConfirmed" value="true" />
-              미성년자인 경우 보호자 동의는 서비스 외부에서 수동으로 제출합니다.
-            </CheckboxField>
             <TermsAgreement markdown={termsMarkdown} />
             <Field htmlFor="investNote" label="메모">
               <textarea id="investNote" name="note" />
