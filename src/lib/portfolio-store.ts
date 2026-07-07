@@ -2,91 +2,6 @@ import type { Holding, ManualPortfolioStore, PortfolioOverview } from "./types";
 import { fetchUsdKrwExchangeRate } from "./exchange-rate";
 import { prisma } from "./prisma";
 
-const FALLBACK_EXCHANGE_RATE = 1380;
-
-function defaultManualPortfolio(): PortfolioOverview {
-  const exchangeRate = FALLBACK_EXCHANGE_RATE;
-  const holdings: Holding[] = [
-    {
-      symbol: "SCHD",
-      name: "Schwab U.S. Dividend Equity ETF",
-      marketCountry: "US",
-      currency: "USD",
-      quantity: 21,
-      lastPrice: 28.4,
-      averagePurchasePrice: 27.2,
-      purchaseExchangeRate: exchangeRate,
-      marketValue: 596.4,
-      marketValueKrw: 596.4 * exchangeRate,
-      costBasisKrw: 27.2 * 21 * exchangeRate,
-      priceProfitLossRate: 0.044,
-      profitLossKrw: (28.4 - 27.2) * 21 * exchangeRate,
-      fxGainLossKrw: 0,
-      profitLossRate: 0.044
-    },
-    {
-      symbol: "VOO",
-      name: "Vanguard S&P 500 ETF",
-      marketCountry: "US",
-      currency: "USD",
-      quantity: 2.8,
-      lastPrice: 514.2,
-      averagePurchasePrice: 481,
-      purchaseExchangeRate: exchangeRate,
-      marketValue: 1439.76,
-      marketValueKrw: 1439.76 * exchangeRate,
-      costBasisKrw: 481 * 2.8 * exchangeRate,
-      priceProfitLossRate: 0.069,
-      profitLossKrw: (514.2 - 481) * 2.8 * exchangeRate,
-      fxGainLossKrw: 0,
-      profitLossRate: 0.069
-    },
-    {
-      symbol: "JEPI",
-      name: "JPMorgan Equity Premium Income ETF",
-      marketCountry: "US",
-      currency: "USD",
-      quantity: 12,
-      lastPrice: 57.1,
-      averagePurchasePrice: 55.6,
-      purchaseExchangeRate: exchangeRate,
-      marketValue: 685.2,
-      marketValueKrw: 685.2 * exchangeRate,
-      costBasisKrw: 55.6 * 12 * exchangeRate,
-      priceProfitLossRate: 0.027,
-      profitLossKrw: (57.1 - 55.6) * 12 * exchangeRate,
-      fxGainLossKrw: 0,
-      profitLossRate: 0.027
-    },
-    {
-      symbol: "005930",
-      name: "삼성전자",
-      marketCountry: "KR",
-      currency: "KRW",
-      quantity: 18,
-      lastPrice: 72000,
-      averagePurchasePrice: 69000,
-      marketValue: 1296000,
-      marketValueKrw: 1296000,
-      costBasisKrw: 69000 * 18,
-      priceProfitLossRate: 0.043,
-      profitLossKrw: (72000 - 69000) * 18,
-      fxGainLossKrw: 0,
-      profitLossRate: 0.043
-    }
-  ];
-
-  return {
-    source: "manual",
-    fetchedAt: new Date().toISOString(),
-    exchangeRate,
-    exchangeRateFetchedAt: new Date().toISOString(),
-    exchangeRateSource: "fallback",
-    totalMarketValueKrw: holdings.reduce((sum, holding) => sum + holding.marketValueKrw, 0),
-    holdings
-  };
-}
-
 function normalizeStore(store: ManualPortfolioStore): ManualPortfolioStore {
   const exchangeRate = Number(store.exchangeRate) || 1380;
   const holdings = store.holdings.map((holding) => {
@@ -141,29 +56,7 @@ function normalizeStore(store: ManualPortfolioStore): ManualPortfolioStore {
   };
 }
 
-async function ensurePortfolioSeed() {
-  const count = await prisma.portfolioHolding.count();
-
-  if (count === 0) {
-    const fallback = defaultManualPortfolio();
-    await prisma.portfolioHolding.createMany({
-      data: fallback.holdings.map((holding) => ({
-        symbol: holding.symbol,
-        name: holding.name,
-        marketCountry: holding.marketCountry,
-        currency: holding.currency,
-        quantity: holding.quantity,
-        lastPrice: holding.lastPrice,
-        averagePurchasePrice: holding.averagePurchasePrice,
-        purchaseExchangeRate: holding.purchaseExchangeRate,
-        profitLossRate: holding.profitLossRate
-      }))
-    });
-  }
-}
-
 export async function readManualPortfolioStore(): Promise<ManualPortfolioStore> {
-  await ensurePortfolioSeed();
   const [exchangeRateSnapshot, holdings] = await Promise.all([
     fetchUsdKrwExchangeRate(),
     prisma.portfolioHolding.findMany({ orderBy: { symbol: "asc" } })

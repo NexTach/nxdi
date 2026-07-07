@@ -1,8 +1,6 @@
 import { readDividendRecords } from "../src/lib/dividends";
-import { readManualPortfolioStore } from "../src/lib/portfolio-store";
 
 async function main() {
-  await readManualPortfolioStore();
   await readDividendRecords();
 }
 
