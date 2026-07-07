@@ -169,9 +169,15 @@ button.full,
 
 .brand {
   align-items: center;
+  color: inherit;
   display: flex;
   gap: var(--tds-space-2);
   min-width: 0;
+  text-decoration: none;
+}
+
+.brand:hover h1 {
+  color: var(--accent-dark);
 }
 
 .brand-mark {

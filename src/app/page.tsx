@@ -128,7 +128,6 @@ export default async function Home({ searchParams }: HomeProps) {
 
       <Navigation
         title="T-ETF"
-        description={`${user.name} · ${user.userType === "alumni" ? "졸업생" : "재학생"}`}
         actions={
           <>
             <ButtonLink href="/admin" variant="secondary">

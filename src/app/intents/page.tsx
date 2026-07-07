@@ -79,7 +79,6 @@ export default async function IntentsPage({ searchParams }: IntentPageProps) {
 
       <Navigation
         title="T-ETF"
-        description={`${user.name} · ${user.userType === "alumni" ? "졸업생" : "재학생"}`}
         actions={
           <>
             <ButtonLink href="/" variant="secondary">

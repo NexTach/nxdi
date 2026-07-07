@@ -60,13 +60,13 @@ export function Navigation({
 }) {
   return (
     <header className="topbar">
-      <div className="brand">
+      <Link className="brand" href="/">
         <div className="brand-mark">{mark}</div>
         <div>
           <h1>{title}</h1>
           {description ? <p>{description}</p> : null}
         </div>
-      </div>
+      </Link>
       {actions ? <div className="nav-actions">{actions}</div> : null}
     </header>
   );
