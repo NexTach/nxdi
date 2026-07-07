@@ -157,6 +157,7 @@ export default async function Home({ searchParams }: HomeProps) {
               <RatePill value={portfolioDailyChangeRate} />
               <TextLink className="chart-link" href="/metrics/daily-change">
                 <SparkLineChart
+                  interactive={false}
                   label="포트폴리오 1년 등락 추세"
                   points={samplePoints(portfolioDailyPoints)}
                   valueFormat="krw"
@@ -172,6 +173,7 @@ export default async function Home({ searchParams }: HomeProps) {
               <RatePill value={portfolioDividend.totalReturnRate} />
               <TextLink className="chart-link" href="/metrics/holding-return">
                 <SparkLineChart
+                  interactive={false}
                   label="보유 수익률 추세"
                   points={holdingReturnPoints}
                   valueFormat="percent"
@@ -187,6 +189,7 @@ export default async function Home({ searchParams }: HomeProps) {
               <RatePill value={portfolioDividend.dividendYield} />
               <TextLink className="chart-link" href="/metrics/dividend-yield">
                 <SparkLineChart
+                  interactive={false}
                   label="배당수익률 추세"
                   points={yieldPoints}
                   valueFormat="percent"
@@ -247,6 +250,7 @@ export default async function Home({ searchParams }: HomeProps) {
                 <div className="holding-row-value">
                   <TextLink className="chart-link" href={href}>
                     <SparkLineChart
+                      interactive={false}
                       label={`${holding.symbol} 최근 1년 가격 추세`}
                       points={samplePoints(pointsFromCandles(chart?.candles ?? []))}
                       valueFormat={holding.currency === "USD" ? "usd" : "krw"}

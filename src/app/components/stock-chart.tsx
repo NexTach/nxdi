@@ -212,11 +212,13 @@ export function CandleChart({
 export function SparkLineChart({
   points,
   label,
-  valueFormat = "number"
+  valueFormat = "number",
+  interactive = true
 }: {
   points: ChartPoint[];
   label?: string;
   valueFormat?: ValueFormat;
+  interactive?: boolean;
 }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
@@ -229,7 +231,7 @@ export function SparkLineChart({
   const min = Math.min(...points.map((point) => point.value));
   const max = Math.max(...points.map((point) => point.value));
   const range = max - min || 1;
-  const activePoint = activeIndex === null ? null : points[activeIndex];
+  const activePoint = interactive && activeIndex !== null ? points[activeIndex] : null;
 
   function x(index: number) {
     return points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
@@ -246,20 +248,22 @@ export function SparkLineChart({
   const isUp = points.at(-1)!.value >= points[0]!.value;
 
   return (
-    <div className="sparkline-chart" aria-label={label} onMouseLeave={() => setActiveIndex(null)}>
+    <div className="sparkline-chart" aria-label={label} onMouseLeave={() => interactive && setActiveIndex(null)}>
       <svg role="img" viewBox={`0 0 ${width} ${height}`}>
         <path className={isUp ? "sparkline-path up" : "sparkline-path down"} d={path} />
-        {points.map((point, index) => (
-          <rect
-            className="sparkline-hit-area"
-            key={`${point.date}-${index}`}
-            x={Math.max(0, x(index) - width / points.length / 2)}
-            y="0"
-            width={Math.max(8, width / points.length)}
-            height={height}
-            onMouseEnter={() => setActiveIndex(index)}
-          />
-        ))}
+        {interactive
+          ? points.map((point, index) => (
+              <rect
+                className="sparkline-hit-area"
+                key={`${point.date}-${index}`}
+                x={Math.max(0, x(index) - width / points.length / 2)}
+                y="0"
+                width={Math.max(8, width / points.length)}
+                height={height}
+                onMouseEnter={() => setActiveIndex(index)}
+              />
+            ))
+          : null}
         {activePoint ? (
           <circle
             className={isUp ? "sparkline-dot up" : "sparkline-dot down"}
