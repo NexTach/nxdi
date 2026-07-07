@@ -389,6 +389,12 @@ button.full,
   width: 100%;
 }
 
+.metric-detail-panel .candle-chart.detail {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
 .metric-detail-panel .list {
   box-shadow: none;
 }
@@ -508,7 +514,7 @@ button.full,
 }
 
 .candle-chart.detail svg {
-  aspect-ratio: 640 / 220;
+  aspect-ratio: 640 / 236;
   height: auto;
 }
 

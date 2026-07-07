@@ -357,9 +357,12 @@ export async function fetchMarketCandles(
 
   const previousClose = meta.chartPreviousClose;
   const lastClose = candles.at(-1)?.close;
+  const previousCandleClose = candles.at(-2)?.close;
   const changeRate =
-    typeof previousClose === "number" && previousClose > 0 && typeof lastClose === "number"
-      ? (lastClose - previousClose) / previousClose
+    typeof previousCandleClose === "number" && previousCandleClose > 0 && typeof lastClose === "number"
+      ? (lastClose - previousCandleClose) / previousCandleClose
+      : typeof previousClose === "number" && previousClose > 0 && typeof lastClose === "number"
+        ? (lastClose - previousClose) / previousClose
       : undefined;
 
   return {

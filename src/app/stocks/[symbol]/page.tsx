@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { CandleChart, SparkLineChart } from "@/app/components/stock-chart";
+import { CandleChart } from "@/app/components/stock-chart";
 import {
   AppShell,
   ButtonLink,
@@ -8,10 +8,16 @@ import {
   ListRow,
   Metric,
   Navigation,
+  Panel,
   SectionHeader,
   TextLink,
   Top
 } from "@/app/components/tds";
+import {
+  changeRateFromCandles,
+  holdingDividendYieldCandles,
+  holdingReturnCandles as buildHoldingReturnCandles
+} from "@/lib/chart-metrics";
 import { getDividendRecord } from "@/lib/dividends";
 import { formatKrw, formatNumber } from "@/lib/format";
 import { fetchMarketCandles } from "@/lib/market-data";
@@ -50,29 +56,6 @@ function formatDividendAmount(record?: DividendRecord) {
   return formatKrw(record.annualDividendPerShare);
 }
 
-function returnPoints(candles: { date: string; close: number }[], holding: Holding, exchangeRate: number) {
-  if (!holding.averagePurchasePrice || holding.averagePurchasePrice <= 0) return [];
-  const costBasis = holding.averagePurchasePrice * holding.quantity * (holding.currency === "USD" ? exchangeRate : 1);
-  return candles.map((candle) => ({
-    date: candle.date,
-    value:
-      costBasis > 0
-        ? ((candle.close * holding.quantity * (holding.currency === "USD" ? exchangeRate : 1)) - costBasis) / costBasis
-        : 0
-  }));
-}
-
-function dividendYieldPoints(candles: { date: string; close: number }[], annualDividendKrw: number, holding: Holding, exchangeRate: number) {
-  if (annualDividendKrw <= 0) return [];
-  return candles.map((candle) => {
-    const marketValue = candle.close * holding.quantity * (holding.currency === "USD" ? exchangeRate : 1);
-    return {
-      date: candle.date,
-      value: marketValue > 0 ? annualDividendKrw / marketValue : 0
-    };
-  });
-}
-
 export default async function StockDetailPage({ params }: StockDetailProps) {
   const user = await getUserSession();
   if (!user) redirect("/login");
@@ -83,12 +66,17 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
   const holding = portfolio.holdings.find((item) => item.symbol.toUpperCase() === symbol);
   if (!holding) notFound();
 
-  const [dividendRecord, dailyChart, monthlyChart] = await Promise.all([
+  const [dividendRecord, dailyChart, weeklyChart, monthlyChart] = await Promise.all([
     getDividendRecord(holding.symbol),
     fetchMarketCandles(holding.symbol, {
-      range: "1y",
+      range: "1mo",
       interval: "1d",
-      limit: 252
+      limit: 2
+    }).catch(() => null),
+    fetchMarketCandles(holding.symbol, {
+      range: "1y",
+      interval: "1wk",
+      limit: 52
     }).catch(() => null),
     fetchMarketCandles(holding.symbol, {
       range: "5y",
@@ -102,8 +90,13 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
         ? dividendRecord.annualDividendPerShare * portfolio.exchangeRate
         : dividendRecord.annualDividendPerShare)
     : 0;
-  const holdingReturnPoints = returnPoints(monthlyChart?.candles ?? [], holding, portfolio.exchangeRate);
-  const yieldPoints = dividendYieldPoints(monthlyChart?.candles ?? [], annualDividendKrw, holding, portfolio.exchangeRate);
+  const returnCandles = buildHoldingReturnCandles(monthlyChart?.candles ?? [], holding, portfolio.exchangeRate);
+  const yieldCandles = holdingDividendYieldCandles(
+    monthlyChart?.candles ?? [],
+    annualDividendKrw,
+    holding,
+    portfolio.exchangeRate
+  );
 
   return (
     <AppShell>
@@ -123,7 +116,7 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
         <Metric label="평가금액" value={formatKrw(holding.marketValueKrw)} />
         <Metric
           label={<TextLink className="metric-card-link" href="#price-chart">전일 등락률</TextLink>}
-          value={<RatePill value={dailyChart?.changeRate} />}
+          value={<RatePill value={changeRateFromCandles(dailyChart?.candles ?? [])} />}
         />
         <Metric
           label={<TextLink className="metric-card-link" href="#holding-return-chart">보유 수익률</TextLink>}
@@ -135,11 +128,11 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
         />
       </Grid>
 
-      <SectionHeader id="price-chart" title="가격 차트" description="최근 1년 실제 일봉 OHLC 데이터 기준입니다." />
+      <SectionHeader id="price-chart" title="가격 차트" description="최근 1년 실제 주봉 OHLC 데이터 기준입니다." />
 
       <CandleChart
-        candles={dailyChart?.candles ?? []}
-        label={`${holding.symbol} 최근 1년 일봉 캔들 차트`}
+        candles={weeklyChart?.candles ?? []}
+        label={`${holding.symbol} 최근 1년 주봉 캔들 차트`}
         size="detail"
         valueFormat={holding.currency === "USD" ? "usd" : "krw"}
       />
@@ -147,32 +140,26 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
       <SectionHeader title="수익률 차트" description="최근 5년 월봉 기준으로 보유 원가와 배당 추세를 계산합니다." />
 
       <Grid columns={2}>
-        <List id="holding-return-chart">
-          <ListRow
-            title="보유 수익률 추세"
-            description="5년 월봉 현재가와 평균 매수가 기준"
-            value={
-              <SparkLineChart
-                label={`${holding.symbol} 보유 수익률 추세`}
-                points={holdingReturnPoints}
-                valueFormat="percent"
-              />
-            }
+        <Panel className="metric-detail-panel">
+          <h2 id="holding-return-chart">보유 수익률 추세</h2>
+          <p className="lede">5년 월봉 현재가와 평균 매수가 기준</p>
+          <CandleChart
+            label={`${holding.symbol} 보유 수익률 월봉 캔들`}
+            candles={returnCandles}
+            size="detail"
+            valueFormat="percent"
           />
-        </List>
-        <List id="dividend-yield-chart">
-          <ListRow
-            title="배당수익률 추세"
-            description="5년 월봉 평가금액과 연 예상 배당 기준"
-            value={
-              <SparkLineChart
-                label={`${holding.symbol} 배당수익률 추세`}
-                points={yieldPoints}
-                valueFormat="percent"
-              />
-            }
+        </Panel>
+        <Panel className="metric-detail-panel">
+          <h2 id="dividend-yield-chart">배당수익률 추세</h2>
+          <p className="lede">5년 월봉 평가금액과 연 예상 배당 기준</p>
+          <CandleChart
+            label={`${holding.symbol} 배당수익률 월봉 캔들`}
+            candles={yieldCandles}
+            size="detail"
+            valueFormat="percent"
           />
-        </List>
+        </Panel>
       </Grid>
 
       <SectionHeader title="종목 정보" description="관리자가 입력한 포트폴리오 기준 정보입니다." />
