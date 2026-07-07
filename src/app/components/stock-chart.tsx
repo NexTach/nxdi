@@ -81,7 +81,7 @@ export function CandleChart({
 
   const metrics = useMemo(() => {
     const width = size === "detail" ? 640 : 148;
-    const height = size === "detail" ? 236 : 58;
+    const height = size === "detail" ? 220 : 52;
     if (candles.length === 0) {
       return {
         width,

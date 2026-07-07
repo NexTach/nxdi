@@ -207,7 +207,7 @@ export default async function AdminPage({ searchParams }: AdminProps) {
           <table>
             <thead>
               <tr>
-                <th>종목 수정</th>
+                <th>종목</th>
                 <th>평가금액</th>
               </tr>
             </thead>
@@ -258,7 +258,9 @@ export default async function AdminPage({ searchParams }: AdminProps) {
                     </td>
                     <td>{record ? formatDividendAmount(record.annualDividendPerShare, record.currency) : "-"}</td>
                     <td>{record?.trailingYield ? `${formatNumber(record.trailingYield * 100, 2)}%` : "-"}</td>
-                    <td>{record?.expectedPaymentMonths.join(", ") ?? "-"}</td>
+                    <td>
+                      {record?.expectedPaymentMonths.map((month) => `${month}월`).join(", ") ?? "-"}
+                    </td>
                     <td>
                       {record?.lastDividendPerShare
                         ? formatDividendAmount(record.lastDividendPerShare, record.currency)

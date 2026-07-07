@@ -32,6 +32,13 @@ function profitLossRate(lastPrice?: number, averagePurchasePrice?: number) {
   return ((lastPrice - averagePurchasePrice) / averagePurchasePrice) * 100;
 }
 
+function formatHoldingNumber(value?: number, digits = 4) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "-";
+  return new Intl.NumberFormat("ko-KR", {
+    maximumFractionDigits: digits
+  }).format(value);
+}
+
 export function AdminHoldingForm({
   symbol,
   name,
@@ -42,7 +49,7 @@ export function AdminHoldingForm({
   averagePurchasePrice,
   purchaseExchangeRate
 }: AdminHoldingFormProps) {
-  const [isOpen, setIsOpen] = useState(Boolean(symbol));
+  const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -67,6 +74,24 @@ export function AdminHoldingForm({
       <button className="secondary" type="button" onClick={() => setIsOpen(true)}>
         종목 추가
       </button>
+    );
+  }
+
+  if (symbol && !isOpen) {
+    return (
+      <div className="holding-summary">
+        <div>
+          <strong>{symbol}</strong>
+          <span>{name}</span>
+          <em>
+            {formatHoldingNumber(quantity)}주 · 현재가 {formatHoldingNumber(lastPrice, 6)} · 평단{" "}
+            {formatHoldingNumber(averagePurchasePrice, 6)}
+          </em>
+        </div>
+        <button className="secondary" type="button" onClick={() => setIsOpen(true)}>
+          수정
+        </button>
+      </div>
     );
   }
 
