@@ -147,6 +147,9 @@ export default async function Home({ searchParams }: HomeProps) {
         description="공개 포트폴리오의 평가금액, 수익률, 배당수익률을 확인하고 참여 의향을 남길 수 있습니다."
         actions={
           <>
+            <ButtonLink href="/product" variant="secondary">
+              상품 설명
+            </ButtonLink>
             <ButtonLink href="/intents">
               의향서 작성
             </ButtonLink>

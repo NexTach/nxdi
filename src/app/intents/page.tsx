@@ -1,3 +1,5 @@
+import { promises as fs } from "fs";
+import path from "path";
 import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LogOut, ShieldAlert } from "lucide-react";
 import { redirect } from "next/navigation";
 import { ToastStack, type ToastMessage } from "@/app/components/toast";
@@ -25,14 +27,21 @@ import { getManualPortfolioOverview } from "@/lib/portfolio-store";
 import { getUserSession } from "@/lib/session";
 import { readStore } from "@/lib/store";
 import { withdrawalLimitForUser } from "@/lib/withdrawal-limit";
+import { TermsAgreement } from "./TermsAgreement";
 import { WithdrawalAmountSlider } from "./WithdrawalAmountSlider";
 
 type IntentPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
+function firstParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 function intentToastMessages(params: Record<string, string | string[] | undefined>): ToastMessage[] {
   const messages: ToastMessage[] = [];
+  const error = firstParam(params.error);
+
   if (params.submitted) {
     messages.push({
       id: "submitted",
@@ -41,10 +50,14 @@ function intentToastMessages(params: Record<string, string | string[] | undefine
       tone: "success"
     });
   }
-  if (params.error) {
+  if (error) {
+    const title =
+      error === "terms_required"
+        ? "약관 동의가 필요합니다"
+        : "입력값을 다시 확인해주세요";
     messages.push({
       id: "error",
-      title: "입력값을 다시 확인해주세요",
+      title,
       tone: "error"
     });
   }
@@ -61,12 +74,21 @@ function formatPercent(value: number) {
   return `${formatNumber(value * 100, 2)}%`;
 }
 
+async function readProductDescription() {
+  const filePath = path.join(process.cwd(), "content", "product-description.md");
+  return fs.readFile(filePath, "utf8");
+}
+
 export default async function IntentsPage({ searchParams }: IntentPageProps) {
   const user = await getUserSession();
   if (!user) redirect("/login");
 
   const params = (await searchParams) ?? {};
-  const [portfolio, store] = await Promise.all([getManualPortfolioOverview(), readStore()]);
+  const [portfolio, store, termsMarkdown] = await Promise.all([
+    getManualPortfolioOverview(),
+    readStore(),
+    readProductDescription()
+  ]);
   const withdrawalLimit = withdrawalLimitForUser(store, portfolio, user.id);
   const myInvestments = store.investmentIntents.filter((intent) => intent.userId === user.id);
   const myWithdrawals = store.withdrawalIntents.filter((intent) => intent.userId === user.id);
@@ -136,6 +158,7 @@ export default async function IntentsPage({ searchParams }: IntentPageProps) {
               <input type="checkbox" name="guardianConfirmed" value="true" />
               미성년자인 경우 보호자 동의는 서비스 외부에서 수동으로 제출합니다.
             </CheckboxField>
+            <TermsAgreement markdown={termsMarkdown} />
             <Field htmlFor="investNote" label="메모">
               <textarea id="investNote" name="note" />
             </Field>
@@ -182,6 +205,7 @@ export default async function IntentsPage({ searchParams }: IntentPageProps) {
             <Field htmlFor="withdrawNote" label="메모">
               <textarea id="withdrawNote" name="note" disabled={!canRequestWithdrawal} />
             </Field>
+            <TermsAgreement markdown={termsMarkdown} disabled={!canRequestWithdrawal} />
             <button type="submit" disabled={!canRequestWithdrawal}>
               제출
             </button>
