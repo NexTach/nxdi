@@ -141,6 +141,7 @@ let cachedKrxSymbols: SymbolSearchResult[] | null = null;
 let cachedKrxSymbolsAt = 0;
 
 const KRX_SYMBOL_CACHE_MS = 60 * 60 * 1000;
+const KRX_OPENAPI_BASE_URL = "https://data-dbg.krx.co.kr/svc/apis";
 const KRX_OPENAPI_PATHS = [
   { path: "sto/stk_isu_base_info.json", exchange: "KOSPI", marketCountry: "KOSPI" as const },
   { path: "sto/ksq_isu_base_info.json", exchange: "KOSDAQ", marketCountry: "KOSDAQ" as const },
@@ -153,10 +154,6 @@ function fmpApiKey() {
 
 function krxOpenApiKey() {
   return process.env.KRX_OPENAPI_AUTH_KEY?.trim() ?? process.env.KRX_AUTH_KEY?.trim();
-}
-
-function krxOpenApiBaseUrl() {
-  return (process.env.KRX_OPENAPI_BASE_URL ?? "https://data-dbg.krx.co.kr/svc/apis").replace(/\/+$/, "");
 }
 
 function openDartApiKey() {
@@ -312,7 +309,7 @@ async function fetchKrxOpenApiRows(path: string) {
   const authKey = krxOpenApiKey();
   if (!authKey) return [];
 
-  const response = await fetchWithTimeout(`${krxOpenApiBaseUrl()}/${path}`, {
+  const response = await fetchWithTimeout(`${KRX_OPENAPI_BASE_URL}/${path}`, {
     cache: "no-store",
     headers: { AUTH_KEY: authKey }
   });
