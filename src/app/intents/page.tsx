@@ -6,7 +6,6 @@ import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
   AppShell,
   Badge,
-  ButtonLink,
   CheckboxField,
   Empty,
   Field,
@@ -102,16 +101,11 @@ export default async function IntentsPage({ searchParams }: IntentPageProps) {
       <Navigation
         title="T-ETF"
         actions={
-          <>
-            <ButtonLink href="/" variant="secondary">
-              포트폴리오
-            </ButtonLink>
-            <form action="/api/auth/logout" method="post">
-              <button className="ghost" type="submit" title="로그아웃">
-                <LogOut size={18} />
-              </button>
-            </form>
-          </>
+          <form action="/api/auth/logout" method="post">
+            <button className="ghost" type="submit" title="로그아웃">
+              <LogOut size={18} />
+            </button>
+          </form>
         }
       />
 

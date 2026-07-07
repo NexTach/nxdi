@@ -26,6 +26,7 @@ import {
   returnPoints,
   samplePoints
 } from "@/lib/chart-metrics";
+import { isAdminUser } from "@/lib/admin";
 import { forecastDividend, summarizePortfolioDividend } from "@/lib/dividends";
 import { formatDateTime, formatKrw, formatNumber } from "@/lib/format";
 import { fetchMarketCandles } from "@/lib/market-data";
@@ -74,6 +75,7 @@ function RatePill({ value }: { value?: number }) {
 export default async function Home({ searchParams }: HomeProps) {
   const user = await getUserSession();
   if (!user) redirect("/login");
+  const isAdmin = isAdminUser(user);
 
   const params = (await searchParams) ?? {};
   const portfolio = await getManualPortfolioOverview();
@@ -130,9 +132,11 @@ export default async function Home({ searchParams }: HomeProps) {
         title="T-ETF"
         actions={
           <>
-            <ButtonLink href="/admin" variant="secondary">
-              관리자
-            </ButtonLink>
+            {isAdmin ? (
+              <ButtonLink href="/admin" variant="secondary">
+                관리자
+              </ButtonLink>
+            ) : null}
             <form action="/api/auth/logout" method="post">
               <button className="ghost" type="submit" title="로그아웃">
                 <LogOut size={18} />
