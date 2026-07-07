@@ -13,6 +13,44 @@ export function changeRateFromCandles(candles: MarketCandle[]) {
   return (latest.close - previous.close) / previous.close;
 }
 
+function previousCloseFromChart(chart?: MarketChart | null) {
+  if (typeof chart?.previousClose === "number" && chart.previousClose > 0) {
+    return chart.previousClose;
+  }
+
+  const previousCandleClose = chart?.candles.at(-2)?.close;
+  return typeof previousCandleClose === "number" && previousCandleClose > 0 ? previousCandleClose : undefined;
+}
+
+export function portfolioChangeRateFromMarketValue({
+  holdings,
+  charts,
+  exchangeRate
+}: {
+  holdings: Holding[];
+  charts: Map<string, MarketChart | null>;
+  exchangeRate: number;
+}) {
+  let currentMarketValue = 0;
+  let previousMarketValue = 0;
+
+  for (const holding of holdings) {
+    if (holding.quantity <= 0 || holding.marketValueKrw <= 0) continue;
+
+    const previousClose = previousCloseFromChart(charts.get(holding.symbol));
+    if (previousClose === undefined) continue;
+
+    const multiplier = holding.quantity * (holding.currency === "USD" ? exchangeRate : 1);
+    const previousHoldingValue = previousClose * multiplier;
+    if (previousHoldingValue <= 0) continue;
+
+    currentMarketValue += holding.marketValueKrw;
+    previousMarketValue += previousHoldingValue;
+  }
+
+  return previousMarketValue > 0 ? (currentMarketValue - previousMarketValue) / previousMarketValue : undefined;
+}
+
 export function samplePoints(points: ChartPoint[], maxPoints = 72) {
   if (points.length <= maxPoints) return points;
   const step = points.length / maxPoints;

@@ -1,4 +1,4 @@
-import { LockKeyhole, Megaphone, UsersRound } from "lucide-react";
+import { LockKeyhole, Megaphone } from "lucide-react";
 import { AdminHoldingForm } from "./AdminHoldingForm";
 import { DisclosureForm } from "./DisclosureForm";
 import { ToastStack, type ToastMessage } from "@/app/components/toast";
@@ -296,7 +296,7 @@ export default async function AdminPage({ searchParams }: AdminProps) {
 
       <Panel>
         <h2>배당 데이터 동기화</h2>
-        <TableSurface>
+        <TableSurface className="dividend-table">
           <table>
             <thead>
               <tr>
@@ -353,7 +353,7 @@ export default async function AdminPage({ searchParams }: AdminProps) {
       {dividendRecords.length > portfolio.holdings.length ? (
         <Panel className="mt-12">
           <h2>포트폴리오 외 배당 데이터</h2>
-          <TableSurface>
+          <TableSurface className="dividend-table compact">
             <table>
               <thead>
                 <tr>
@@ -393,9 +393,7 @@ export default async function AdminPage({ searchParams }: AdminProps) {
       <SectionHeader title="투자 의향서" description="신청자 정보와 보호자 확인 여부를 보고 상태를 저장합니다." />
 
       <Panel>
-        <h2>
-          <UsersRound size={18} /> 투자 의향서
-        </h2>
+        <h2>투자 의향서</h2>
         <TableSurface>
           <table>
             <thead>

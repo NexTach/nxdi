@@ -296,6 +296,7 @@ function TradeEditor({
         <Field htmlFor={`symbol-${trade.clientId}`} label="심볼">
           <input
             id={`symbol-${trade.clientId}`}
+            placeholder="예: SCHD"
             required
             value={trade.symbol}
             onChange={(event) => update({ symbol: event.target.value })}
@@ -304,6 +305,7 @@ function TradeEditor({
         <Field htmlFor={`name-${trade.clientId}`} label="종목명" wide>
           <input
             id={`name-${trade.clientId}`}
+            placeholder="예: Schwab US Dividend Equity ETF"
             required
             value={trade.name}
             onChange={(event) => update({ name: event.target.value })}
@@ -352,6 +354,7 @@ function TradeEditor({
           <input
             id={`quantity-${trade.clientId}`}
             min="0"
+            placeholder="예: 3"
             required
             step="0.000001"
             type="number"
@@ -363,6 +366,7 @@ function TradeEditor({
           <input
             id={`price-${trade.clientId}`}
             min="0"
+            placeholder={trade.currency === "USD" ? "예: 78.5" : "예: 12000"}
             required
             step="0.000001"
             type="number"
@@ -376,6 +380,7 @@ function TradeEditor({
             id={`exchange-${trade.clientId}`}
             max="3000"
             min="500"
+            placeholder={trade.currency === "USD" ? "예: 1380.5" : "원화 거래는 입력하지 않음"}
             required={trade.currency === "USD"}
             step="0.01"
             type="number"
@@ -386,6 +391,7 @@ function TradeEditor({
         <Field htmlFor={`profit-${trade.clientId}`} label="수익률 (%)">
           <input
             id={`profit-${trade.clientId}`}
+            placeholder="예: 4.25"
             required
             step="0.0001"
             type="number"
@@ -397,6 +403,7 @@ function TradeEditor({
           <input
             id={`fee-${trade.clientId}`}
             min="0"
+            placeholder="예: 1200"
             required
             step="1"
             type="number"
@@ -408,6 +415,7 @@ function TradeEditor({
           <input
             id={`tax-${trade.clientId}`}
             min="0"
+            placeholder="예: 0"
             required
             step="1"
             type="number"

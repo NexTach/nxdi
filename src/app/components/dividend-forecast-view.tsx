@@ -34,12 +34,13 @@ export function DividendForecastView({
           items,
           amountKrw: items.reduce((sum, line) => sum + monthlyAmount(line, mode), 0)
         };
-      }).filter((row) => row.items.length > 0),
+      }),
     [lines, mode]
   );
   const unscheduledLines = lines.filter(
     (line) => line.annualDividendKrw > 0 && line.expectedPaymentMonths.length === 0
   );
+  const hasMonthlyRows = monthlyRows.some((row) => row.items.length > 0);
 
   return (
     <section className="forecast-view">
@@ -65,34 +66,57 @@ export function DividendForecastView({
       </div>
 
       {view === "monthly" ? (
-        <List>
+        <div className="dividend-calendar" role="list" aria-label="월별 예상 배당 캘린더">
           {monthlyRows.map((row) => (
-            <ListRow
+            <article
+              className={`dividend-calendar-month ${row.items.length > 0 ? "has-dividend" : "empty"}`}
               key={row.month}
-              title={`${row.month}월`}
-              description={row.items.map((line) => stockPrimaryLabel(line)).join(", ")}
-              value={
-                <>
-                  {formatKrw(row.amountKrw)}
-                  <RowMeta>{row.items.length}개 종목</RowMeta>
-                </>
-              }
-            />
+              role="listitem"
+            >
+              <header>
+                <span>{row.month}월</span>
+                {row.items.length > 0 ? <strong>{formatKrw(row.amountKrw)}</strong> : <em>예정 없음</em>}
+              </header>
+              <div className="dividend-calendar-items">
+                {row.items.length > 0 ? (
+                  <>
+                    {row.items.slice(0, 3).map((line) => (
+                      <span className="dividend-calendar-chip" key={line.symbol} title={stockPrimaryLabel(line)}>
+                        {stockPrimaryLabel(line)}
+                      </span>
+                    ))}
+                    {row.items.length > 3 ? (
+                      <span className="dividend-calendar-more">+{row.items.length - 3}</span>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="dividend-calendar-empty">배당 예정 종목 없음</span>
+                )}
+              </div>
+              {row.items.length > 0 ? <footer>{row.items.length}개 종목</footer> : null}
+            </article>
           ))}
           {unscheduledLines.length > 0 ? (
-            <ListRow
-              title="지급월 없음"
-              description={unscheduledLines.map((line) => stockPrimaryLabel(line)).join(", ")}
-              value={
-                <>
-                  {formatKrw(unscheduledLines.reduce((sum, line) => sum + line.annualDividendKrw, 0))}
-                  <RowMeta>{unscheduledLines.length}개 종목</RowMeta>
-                </>
-              }
-            />
+            <article className="dividend-calendar-unscheduled" role="listitem">
+              <header>
+                <span>지급월 없음</span>
+                <strong>{formatKrw(unscheduledLines.reduce((sum, line) => sum + line.annualDividendKrw, 0))}</strong>
+              </header>
+              <div className="dividend-calendar-items">
+                {unscheduledLines.slice(0, 6).map((line) => (
+                  <span className="dividend-calendar-chip" key={line.symbol} title={stockPrimaryLabel(line)}>
+                    {stockPrimaryLabel(line)}
+                  </span>
+                ))}
+                {unscheduledLines.length > 6 ? (
+                  <span className="dividend-calendar-more">+{unscheduledLines.length - 6}</span>
+                ) : null}
+              </div>
+              <footer>{unscheduledLines.length}개 종목</footer>
+            </article>
           ) : null}
-          {monthlyRows.length === 0 && unscheduledLines.length === 0 ? <Empty>예상 배당 데이터가 없습니다.</Empty> : null}
-        </List>
+          {!hasMonthlyRows && unscheduledLines.length === 0 ? <Empty>예상 배당 데이터가 없습니다.</Empty> : null}
+        </div>
       ) : (
         <List>
           {lines.map((line) => {

@@ -12,8 +12,8 @@ import {
 } from "@/app/components/tds";
 import {
   aggregatePortfolioCandles,
-  changeRateFromCandles,
   dividendYieldCandles,
+  portfolioChangeRateFromMarketValue,
   returnCandles
 } from "@/lib/chart-metrics";
 import { summarizePortfolioDividend } from "@/lib/dividends";
@@ -99,11 +99,6 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
     exchangeRate: portfolio.exchangeRate,
     bucket: metric === "daily-change" ? "week" : "month"
   });
-  const portfolioDailyChangeCandles = aggregatePortfolioCandles({
-    holdings: portfolio.holdings,
-    charts: dailyChangeCharts,
-    exchangeRate: portfolio.exchangeRate
-  });
   const candles =
     metric === "holding-return"
       ? returnCandles(portfolioCandles, portfolioDividend.costBasisKrw)
@@ -116,7 +111,11 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
       ? portfolioDividend.totalReturnRate
       : metric === "dividend-yield"
         ? portfolioDividend.dividendYield
-        : changeRateFromCandles(portfolioDailyChangeCandles);
+        : portfolioChangeRateFromMarketValue({
+            holdings: portfolio.holdings,
+            charts: dailyChangeCharts,
+            exchangeRate: portfolio.exchangeRate
+          });
   const labels = METRIC_LABELS[metric];
 
   return (

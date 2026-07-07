@@ -24,6 +24,7 @@ import {
   aggregatePortfolioCandles,
   changeRateFromCandles,
   dividendYieldPoints,
+  portfolioChangeRateFromMarketValue,
   pointsFromCandles,
   returnPoints,
   samplePoints
@@ -114,7 +115,11 @@ export default async function Home({ searchParams }: HomeProps) {
     exchangeRate: portfolio.exchangeRate,
     bucket: "month"
   });
-  const portfolioDailyChangeRate = changeRateFromCandles(portfolioDailyCandles);
+  const portfolioDailyChangeRate = portfolioChangeRateFromMarketValue({
+    holdings: portfolio.holdings,
+    charts: dailyCharts,
+    exchangeRate: portfolio.exchangeRate
+  });
   const portfolioDailyPoints = pointsFromCandles(portfolioDailyCandles);
   const holdingReturnPoints = returnPoints(portfolioMonthlyCandles, portfolioDividend.costBasisKrw);
   const yieldPoints = dividendYieldPoints(portfolioMonthlyCandles, portfolioDividend.annualDividendKrw);
@@ -232,82 +237,84 @@ export default async function Home({ searchParams }: HomeProps) {
         description={`마지막 갱신 ${formatDateTime(portfolio.fetchedAt)} · USD/KRW ${formatNumber(portfolio.exchangeRate, 2)}원`}
       />
 
-      <div className="home-portfolio-grid">
-        <Panel className="tds-composition-panel">
-          <h2>구성 종목 비중</h2>
-          <CompositionChart
-            emptyText="포트폴리오 데이터 없음"
-            items={portfolioAllocation}
-            label="포트폴리오 구성 종목 비중"
-          />
-        </Panel>
+      <div className="home-dashboard-grid">
+        <aside className="home-dashboard-aside">
+          <Panel className="tds-composition-panel">
+            <h2>구성 종목 비중</h2>
+            <CompositionChart
+              emptyText="포트폴리오 데이터 없음"
+              items={portfolioAllocation}
+              label="포트폴리오 구성 종목 비중"
+            />
+          </Panel>
 
-        <List className="home-holdings-list">
-          {portfolio.holdings.map((holding) => {
-            const chart = dailyCharts.get(holding.symbol);
-            const href = `/stocks/${encodeURIComponent(holding.symbol)}`;
-            const secondaryLabel = stockSecondaryLabel(holding);
+          <section>
+            <SectionHeader title="최근 공시" description="운영 변경과 첨부 거래 이력을 확인합니다." />
 
-            return (
-              <ListRow
-                key={holding.symbol}
-                title={<TextLink href={href}>{stockPrimaryLabel(holding)}</TextLink>}
-                description={`${secondaryLabel ? `${secondaryLabel} · ` : ""}${formatNumber(holding.quantity, 4)}주 · 원화 보유 수익률 ${formatPercent(holding.profitLossRate)}`}
-                value={
-                  <div className="holding-row-value">
-                    <TextLink className="chart-link" href={href}>
-                      <SparkLineChart
-                        interactive={false}
-                        label={`${stockFullLabel(holding)} 최근 1년 가격 추세`}
-                        points={samplePoints(pointsFromCandles(chart?.candles ?? []))}
-                        valueFormat={holding.currency === "USD" ? "usd" : "krw"}
-                      />
-                    </TextLink>
-                    <div className="holding-row-price">
-                      <span>{formatKrw(holding.marketValueKrw)}</span>
-                      <RatePill value={changeRateFromCandles(chart?.candles ?? [])} />
+            <List className="disclosure-list">
+              {disclosures.map((disclosure) => (
+                <ListRow
+                  key={disclosure.id}
+                  title={<TextLink href={`/disclosures/${disclosure.id}`}>{disclosure.title}</TextLink>}
+                  description={disclosure.body.slice(0, 96) + (disclosure.body.length > 96 ? "..." : "")}
+                  value={<TextLink href={`/disclosures/${disclosure.id}`}>상세</TextLink>}
+                >
+                  <RowMeta>{formatDateTime(disclosure.createdAt)}</RowMeta>
+                  <DisclosureTradeSummary trades={disclosure.trades} />
+                </ListRow>
+              ))}
+              {disclosures.length === 0 ? (
+                <ListRow title="등록된 공시가 없습니다." description="공시가 등록되면 이 영역에 표시됩니다." />
+              ) : null}
+            </List>
+          </section>
+        </aside>
+
+        <div className="home-dashboard-main">
+          <List className="home-holdings-list">
+            {portfolio.holdings.map((holding) => {
+              const chart = dailyCharts.get(holding.symbol);
+              const href = `/stocks/${encodeURIComponent(holding.symbol)}`;
+              const secondaryLabel = stockSecondaryLabel(holding);
+
+              return (
+                <ListRow
+                  key={holding.symbol}
+                  title={<TextLink href={href}>{stockPrimaryLabel(holding)}</TextLink>}
+                  description={`${secondaryLabel ? `${secondaryLabel} · ` : ""}${formatNumber(holding.quantity, 4)}주 · 원화 보유 수익률 ${formatPercent(holding.profitLossRate)}`}
+                  value={
+                    <div className="holding-row-value">
+                      <TextLink className="chart-link" href={href}>
+                        <SparkLineChart
+                          interactive={false}
+                          label={`${stockFullLabel(holding)} 최근 1년 가격 추세`}
+                          points={samplePoints(pointsFromCandles(chart?.candles ?? []))}
+                          valueFormat={holding.currency === "USD" ? "usd" : "krw"}
+                        />
+                      </TextLink>
+                      <div className="holding-row-price">
+                        <span>{formatKrw(holding.marketValueKrw)}</span>
+                        <RatePill value={changeRateFromCandles(chart?.candles ?? [])} />
+                      </div>
                     </div>
-                  </div>
-                }
-              />
-            );
-          })}
-        </List>
-      </div>
-
-      <div className="home-secondary-grid">
-        <section>
-          <SectionHeader title="최근 공시" description="운영 변경과 첨부 거래 이력을 확인합니다." />
-
-          <List className="disclosure-list">
-            {disclosures.map((disclosure) => (
-              <ListRow
-                key={disclosure.id}
-                title={<TextLink href={`/disclosures/${disclosure.id}`}>{disclosure.title}</TextLink>}
-                description={disclosure.body.slice(0, 96) + (disclosure.body.length > 96 ? "..." : "")}
-                value={<TextLink href={`/disclosures/${disclosure.id}`}>상세</TextLink>}
-              >
-                <RowMeta>{formatDateTime(disclosure.createdAt)}</RowMeta>
-                <DisclosureTradeSummary trades={disclosure.trades} />
-              </ListRow>
-            ))}
-            {disclosures.length === 0 ? (
-              <ListRow title="등록된 공시가 없습니다." description="공시가 등록되면 이 영역에 표시됩니다." />
-            ) : null}
+                  }
+                />
+              );
+            })}
           </List>
-        </section>
 
-        <section>
-          <SectionHeader title="예정 배당" description="현재 펀드 보유 수량 기준으로 예정 배당을 월별 또는 종목별로 확인합니다." />
+          <section>
+            <SectionHeader title="예정 배당" description="현재 펀드 보유 수량 기준으로 예정 배당을 월별 또는 종목별로 확인합니다." />
 
-          <Grid columns={3} className="scheduled-dividend-summary">
-            <Metric label="연 예정 배당" value={formatKrw(scheduledDividend.annualDividendKrw)} />
-            <Metric label="월평균 예정 배당" value={formatKrw(scheduledDividend.monthlyAverageKrw)} />
-            <Metric label="현재 배당수익률" value={formatPercent(portfolioDividend.dividendYield)} />
-          </Grid>
+            <Grid columns={3} className="scheduled-dividend-summary">
+              <Metric label="연 예정 배당" value={formatKrw(scheduledDividend.annualDividendKrw)} />
+              <Metric label="월평균 예정 배당" value={formatKrw(scheduledDividend.monthlyAverageKrw)} />
+              <Metric label="현재 배당수익률" value={formatPercent(portfolioDividend.dividendYield)} />
+            </Grid>
 
-          <DividendForecastView lines={scheduledDividend.lines} mode="holding" />
-        </section>
+            <DividendForecastView lines={scheduledDividend.lines} mode="holding" />
+          </section>
+        </div>
       </div>
 
       <Notice className="mt-18">

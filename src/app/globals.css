@@ -418,25 +418,39 @@ button.full,
   max-width: 520px;
 }
 
-.home-portfolio-grid,
-.home-secondary-grid {
+.home-dashboard-grid {
   display: grid;
   gap: var(--tds-space-3);
-  grid-template-columns: minmax(0, 0.92fr) minmax(520px, 1.08fr);
-}
-
-.home-secondary-grid {
+  grid-template-columns: minmax(340px, 440px) minmax(0, 1fr);
   align-items: start;
-  grid-template-columns: minmax(420px, 0.9fr) minmax(0, 1.1fr);
-  margin-top: var(--tds-space-2);
 }
 
-.home-secondary-grid > section {
+.home-dashboard-aside,
+.home-dashboard-main {
+  display: grid;
+  gap: var(--tds-space-3);
   min-width: 0;
 }
 
-.home-holdings-list {
-  align-self: stretch;
+.home-dashboard-aside .section-title,
+.home-dashboard-main .section-title {
+  margin-top: var(--tds-space-2);
+}
+
+.home-dashboard-aside .tds-composition-chart {
+  grid-template-columns: 1fr;
+}
+
+.home-dashboard-aside .tds-composition-visual {
+  height: 172px;
+}
+
+.home-dashboard-aside .tds-composition-legend {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.home-holdings-list .list-row {
+  grid-template-columns: minmax(320px, 1fr) minmax(220px, auto);
 }
 
 .section-title {
@@ -1115,6 +1129,64 @@ button.full,
   white-space: normal;
 }
 
+.dividend-table {
+  overflow-x: visible;
+}
+
+.dividend-table table {
+  table-layout: fixed;
+}
+
+.dividend-table th,
+.dividend-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.dividend-table th:nth-child(1),
+.dividend-table td:nth-child(1) {
+  width: 26%;
+}
+
+.dividend-table th:nth-child(2),
+.dividend-table td:nth-child(2),
+.dividend-table th:nth-child(3),
+.dividend-table td:nth-child(3),
+.dividend-table th:nth-child(5),
+.dividend-table td:nth-child(5) {
+  width: 13%;
+}
+
+.dividend-table th:nth-child(4),
+.dividend-table td:nth-child(4) {
+  width: 18%;
+}
+
+.dividend-table th:nth-child(6),
+.dividend-table td:nth-child(6) {
+  width: 17%;
+}
+
+.dividend-table.compact th:nth-child(1),
+.dividend-table.compact td:nth-child(1) {
+  width: 42%;
+}
+
+.dividend-table.compact th:nth-child(2),
+.dividend-table.compact td:nth-child(2) {
+  width: 34%;
+}
+
+.dividend-table.compact th:nth-child(3),
+.dividend-table.compact td:nth-child(3) {
+  width: 24%;
+}
+
+.dividend-table button {
+  min-height: var(--tds-control-sm);
+  padding: 0 var(--tds-space-3);
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -1580,6 +1652,13 @@ button.holding-modal-close {
   display: grid;
   gap: var(--tds-space-3);
   padding: var(--tds-space-3);
+}
+
+.trade-editor-card input::placeholder,
+.trade-editor-card textarea::placeholder {
+  color: #9aa4b2;
+  font-weight: 600;
+  opacity: 1;
 }
 
 .disclosure-modal-actions {
@@ -2051,6 +2130,117 @@ button.tds-toast-close:hover {
   gap: var(--tds-space-3);
 }
 
+.dividend-calendar {
+  display: grid;
+  gap: var(--tds-space-2);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dividend-calendar-month,
+.dividend-calendar-unscheduled {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--tds-radius-lg);
+  display: grid;
+  gap: var(--tds-space-3);
+  min-height: 148px;
+  padding: var(--tds-space-3);
+}
+
+.dividend-calendar-month.has-dividend {
+  border-color: rgba(49, 130, 246, 0.22);
+  box-shadow: 0 1px 2px rgba(25, 31, 40, 0.03);
+}
+
+.dividend-calendar-month.empty {
+  background: var(--surface-muted);
+  border-style: dashed;
+}
+
+.dividend-calendar-month header,
+.dividend-calendar-unscheduled header {
+  align-items: start;
+  display: grid;
+  gap: var(--tds-space-1);
+}
+
+.dividend-calendar-month header span,
+.dividend-calendar-unscheduled header span {
+  color: var(--text);
+  font-size: var(--tds-text-lg);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.dividend-calendar-month header strong,
+.dividend-calendar-unscheduled header strong {
+  color: var(--text);
+  font-size: var(--tds-text-sm);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.dividend-calendar-month header em {
+  color: var(--weak);
+  font-size: var(--tds-text-xs);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.dividend-calendar-items {
+  align-content: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dividend-calendar-chip,
+.dividend-calendar-more,
+.dividend-calendar-empty {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: var(--tds-text-xs);
+  font-weight: 800;
+  line-height: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dividend-calendar-chip {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  overflow: hidden;
+  padding: 6px var(--tds-space-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dividend-calendar-more {
+  background: var(--surface-muted);
+  color: var(--muted);
+  padding: 6px var(--tds-space-2);
+}
+
+.dividend-calendar-empty {
+  color: var(--weak);
+  font-weight: 700;
+}
+
+.dividend-calendar-month footer,
+.dividend-calendar-unscheduled footer {
+  align-self: end;
+  color: var(--muted);
+  font-size: var(--tds-text-xs);
+  font-weight: 800;
+}
+
+.dividend-calendar-unscheduled {
+  background: var(--surface-muted);
+  grid-column: 1 / -1;
+  min-height: auto;
+}
+
 .tab {
   background: var(--surface-muted);
   border: 0;
@@ -2113,8 +2303,16 @@ button.tds-toast-close:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .home-secondary-grid {
+  .home-dashboard-grid {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  }
+
+  .home-dashboard-aside .tds-composition-legend {
     grid-template-columns: 1fr;
+  }
+
+  .dividend-calendar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -2131,8 +2329,12 @@ button.tds-toast-close:hover {
     max-width: none;
   }
 
-  .home-portfolio-grid {
+  .home-dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-holdings-list .list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 }
 
@@ -2166,8 +2368,18 @@ button.tds-toast-close:hover {
     grid-template-columns: 1fr;
   }
 
-  .home-secondary-grid {
-    margin-top: 0;
+  .dividend-calendar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-dashboard-aside,
+  .home-dashboard-main {
+    gap: var(--tds-space-2);
+  }
+
+  .home-dashboard-aside .section-title,
+  .home-dashboard-main .section-title {
+    margin-top: var(--tds-space-4);
   }
 }
 
@@ -2226,6 +2438,10 @@ button.tds-toast-close:hover {
     padding: var(--tds-space-4);
   }
 
+  .home-holdings-list .list-row {
+    grid-template-columns: 1fr;
+  }
+
   .list-row-value {
     text-align: left;
   }
@@ -2241,6 +2457,15 @@ button.tds-toast-close:hover {
 
   .sparkline-chart {
     width: min(220px, calc(100vw - 64px));
+  }
+
+  .dividend-calendar {
+    grid-template-columns: 1fr;
+  }
+
+  .dividend-calendar-month,
+  .dividend-calendar-unscheduled {
+    min-height: 120px;
   }
 
   .inline-fields.exchange {
