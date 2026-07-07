@@ -42,6 +42,7 @@ export function AdminHoldingForm({
   averagePurchasePrice,
   purchaseExchangeRate
 }: AdminHoldingFormProps) {
+  const [isOpen, setIsOpen] = useState(Boolean(symbol));
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -60,6 +61,14 @@ export function AdminHoldingForm({
     () => profitLossRate(Number(form.lastPrice), Number(form.averagePurchasePrice)),
     [form.averagePurchasePrice, form.lastPrice]
   );
+
+  if (!symbol && !isOpen) {
+    return (
+      <button className="secondary" type="button" onClick={() => setIsOpen(true)}>
+        종목 추가
+      </button>
+    );
+  }
 
   async function search() {
     const keyword = query.trim();
@@ -240,6 +249,11 @@ export function AdminHoldingForm({
         </Field>
         <ComputedValue label="손익률" value={computedRate === null ? "-" : `${computedRate.toFixed(2)}%`} />
         <button type="submit">{symbol ? "수정" : "추가"}</button>
+        {!symbol ? (
+          <button className="ghost" type="button" onClick={() => setIsOpen(false)}>
+            취소
+          </button>
+        ) : null}
       </InlineFields>
     </Form>
   );
