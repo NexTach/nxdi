@@ -133,14 +133,40 @@ function openDartApiKey() {
 async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 8000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let keepTimeoutForBodyRead = false;
 
   try {
-    return await fetch(input, {
+    const response = await fetch(input, {
       ...init,
       signal: controller.signal
     });
+    keepTimeoutForBodyRead = true;
+
+    const clearAfterRead = async <T>(read: () => Promise<T>) => {
+      try {
+        return await read();
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+
+    const originalArrayBuffer = response.arrayBuffer.bind(response);
+    const originalJson = response.json.bind(response);
+    const originalText = response.text.bind(response);
+
+    response.arrayBuffer = () => clearAfterRead(originalArrayBuffer);
+    response.json = () => clearAfterRead(originalJson);
+    response.text = () => clearAfterRead(originalText);
+
+    if (!response.ok) {
+      clearTimeout(timeout);
+    }
+
+    return response;
   } finally {
-    clearTimeout(timeout);
+    if (!keepTimeoutForBodyRead) {
+      clearTimeout(timeout);
+    }
   }
 }
 
@@ -166,6 +192,11 @@ function inferMarketCode(symbol: string, currency?: string, exchange?: string): 
 function normalizeKrStockCode(symbol: string) {
   const cleaned = symbol.trim().toUpperCase().replace(/\.(KS|KQ)$/, "");
   return /^\d{6}$/.test(cleaned) ? cleaned : null;
+}
+
+function shouldSearchOpenDart(query: string) {
+  const normalized = query.trim().toUpperCase();
+  return /[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(normalized) || /^\d{1,6}(\.(KS|KQ))?$/.test(normalized);
 }
 
 function normalizeSymbolForStorage(symbol: string, currency?: string) {
@@ -244,7 +275,14 @@ export async function searchSymbols(query: string): Promise<SymbolSearchResult[]
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const openDartResults = await searchOpenDartSymbols(trimmed);
+  let openDartResults: SymbolSearchResult[] = [];
+  if (shouldSearchOpenDart(trimmed)) {
+    try {
+      openDartResults = await searchOpenDartSymbols(trimmed);
+    } catch (error) {
+      console.warn(`OpenDART search failed: ${trimmed}`, error);
+    }
+  }
   if (openDartResults.length >= 15) return openDartResults;
 
   if (fmpApiKey()) {
