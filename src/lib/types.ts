@@ -125,6 +125,7 @@ export type DividendForecastLine = {
   allocationKrw: number;
   estimatedQuantity: number;
   annualDividendKrw: number;
+  lastDividendKrw?: number;
   monthlyAverageKrw: number;
   expectedPaymentMonths: number[];
   nextPaymentMonth?: number;

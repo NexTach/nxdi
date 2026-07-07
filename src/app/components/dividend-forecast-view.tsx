@@ -7,15 +7,23 @@ import { stockPrimaryLabel, stockSecondaryLabel } from "@/lib/stock-display";
 import type { DividendForecastLine } from "@/lib/types";
 
 type ForecastView = "monthly" | "stock";
+type DividendForecastViewMode = "simulation" | "holding";
 
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
 
-function monthlyAmount(line: DividendForecastLine) {
+function monthlyAmount(line: DividendForecastLine, mode: DividendForecastViewMode) {
+  if (mode === "holding" && typeof line.lastDividendKrw === "number") return line.lastDividendKrw;
   if (line.expectedPaymentMonths.length === 0) return line.annualDividendKrw;
   return line.annualDividendKrw / line.expectedPaymentMonths.length;
 }
 
-export function DividendForecastView({ lines }: { lines: DividendForecastLine[] }) {
+export function DividendForecastView({
+  lines,
+  mode = "simulation"
+}: {
+  lines: DividendForecastLine[];
+  mode?: DividendForecastViewMode;
+}) {
   const [view, setView] = useState<ForecastView>("monthly");
   const monthlyRows = useMemo(
     () =>
@@ -24,10 +32,10 @@ export function DividendForecastView({ lines }: { lines: DividendForecastLine[] 
         return {
           month,
           items,
-          amountKrw: items.reduce((sum, line) => sum + monthlyAmount(line), 0)
+          amountKrw: items.reduce((sum, line) => sum + monthlyAmount(line, mode), 0)
         };
       }).filter((row) => row.items.length > 0),
-    [lines]
+    [lines, mode]
   );
   const unscheduledLines = lines.filter(
     (line) => line.annualDividendKrw > 0 && line.expectedPaymentMonths.length === 0
@@ -89,16 +97,25 @@ export function DividendForecastView({ lines }: { lines: DividendForecastLine[] 
         <List>
           {lines.map((line) => {
             const secondaryLabel = stockSecondaryLabel(line);
+            const quantityText =
+              mode === "holding"
+                ? `보유 ${formatNumber(line.estimatedQuantity, 5)}주`
+                : `배정 ${formatKrw(line.allocationKrw)} · 예상 ${formatNumber(line.estimatedQuantity, 5)}주`;
+            const primaryAmount =
+              mode === "holding" && typeof line.lastDividendKrw === "number"
+                ? line.lastDividendKrw
+                : line.monthlyAverageKrw;
             return (
               <ListRow
                 key={line.symbol}
                 title={stockPrimaryLabel(line)}
-                description={`${secondaryLabel ? `${secondaryLabel} · ` : ""}배정 ${formatKrw(line.allocationKrw)} · 예상 ${formatNumber(line.estimatedQuantity, 5)}주`}
+                description={`${secondaryLabel ? `${secondaryLabel} · ` : ""}${quantityText}`}
                 value={
                   <>
-                    {formatKrw(line.monthlyAverageKrw)}
+                    {formatKrw(primaryAmount)}
                     <RowMeta>
-                      연 {formatKrw(line.annualDividendKrw)} ·{" "}
+                      {mode === "holding" && typeof line.lastDividendKrw === "number" ? "최근 배당 기준" : "월평균"} · 연{" "}
+                      {formatKrw(line.annualDividendKrw)} ·{" "}
                       {line.expectedPaymentMonths.length > 0
                         ? line.expectedPaymentMonths.map((month) => `${month}월`).join(", ")
                         : "지급월 없음"}

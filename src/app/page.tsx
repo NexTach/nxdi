@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LogOut, RefreshCw, ShieldAlert } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LogOut, ShieldAlert } from "lucide-react";
 import { redirect } from "next/navigation";
 import { DividendForecastView } from "@/app/components/dividend-forecast-view";
 import { SparkLineChart } from "@/app/components/stock-chart";
@@ -9,7 +9,6 @@ import {
   ButtonLink,
   CheckboxField,
   CompositionChart,
-  CtaPanel,
   Empty,
   Field,
   Form,
@@ -44,10 +43,6 @@ import { stockFullLabel, stockPrimaryLabel, stockSecondaryLabel } from "@/lib/st
 type HomeProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function firstParam(value?: string | string[]) {
-  return Array.isArray(value) ? value[0] : value;
-}
 
 function homeToastMessages(params: Record<string, string | string[] | undefined>): ToastMessage[] {
   const messages: ToastMessage[] = [];
@@ -94,10 +89,9 @@ export default async function Home({ searchParams }: HomeProps) {
   if (!user) redirect("/login");
 
   const params = (await searchParams) ?? {};
-  const amount = Math.max(10000, Number(firstParam(params.amountKrw) ?? 100000) || 100000);
   const [portfolio, store] = await Promise.all([getManualPortfolioOverview(), readStore()]);
-  const [forecast, portfolioDividend] = await Promise.all([
-    forecastDividend(portfolio, amount),
+  const [scheduledDividend, portfolioDividend] = await Promise.all([
+    forecastDividend(portfolio, portfolio.totalMarketValueKrw),
     summarizePortfolioDividend(portfolio)
   ]);
   const [dailyChartEntries, monthlyChartEntries] = await Promise.all([
@@ -173,6 +167,9 @@ export default async function Home({ searchParams }: HomeProps) {
             <ButtonLink href="#intent-section">
               의향서 작성
             </ButtonLink>
+            <ButtonLink href="/simulation" variant="secondary">
+              투자 시뮬레이션
+            </ButtonLink>
             <ButtonLink href="#portfolio-section" variant="secondary">
               포트폴리오 보기
             </ButtonLink>
@@ -232,40 +229,6 @@ export default async function Home({ searchParams }: HomeProps) {
         />
       </Grid>
 
-      <SectionHeader title="예상 배당 계산" description="가정 투자금 기준으로 배정금액과 예상 배당을 계산합니다." />
-
-      <Grid columns={2}>
-        <CtaPanel>
-          <Form method="get">
-            <Field htmlFor="amountKrw" label="가정 투자금">
-              <input id="amountKrw" name="amountKrw" type="number" min="10000" step="10000" defaultValue={amount} />
-            </Field>
-            <button type="submit">
-              <RefreshCw size={17} />
-              다시 계산
-            </button>
-          </Form>
-        </CtaPanel>
-
-        <List>
-          <ListRow
-            title="연 예상 배당"
-            description="현재 USD/KRW 기준이며 세금과 향후 환율 변동은 반영되지 않습니다."
-            value={formatKrw(forecast.annualDividendKrw)}
-          />
-          <ListRow
-            title="월평균 예상 배당"
-            description="연 예상 배당을 12개월로 나눈 값"
-            value={formatKrw(forecast.monthlyAverageKrw)}
-          />
-          <ListRow
-            title="가정 배당수익률"
-            description="가정 투자금 대비 연 예상 배당"
-            value={formatPercent(forecast.amountKrw > 0 ? forecast.annualDividendKrw / forecast.amountKrw : 0)}
-          />
-        </List>
-      </Grid>
-
       <SectionHeader
         id="portfolio-section"
         title="현재 포트폴리오"
@@ -313,9 +276,15 @@ export default async function Home({ searchParams }: HomeProps) {
         })}
       </List>
 
-      <SectionHeader title="예상 배당" description="가정 투자금 기준 예상 배당을 월별 또는 종목별로 확인합니다." />
+      <SectionHeader title="예정 배당" description="현재 펀드 보유 수량 기준으로 예정 배당을 월별 또는 종목별로 확인합니다." />
 
-      <DividendForecastView lines={forecast.lines} />
+      <Grid columns={3}>
+        <Metric label="연 예정 배당" value={formatKrw(scheduledDividend.annualDividendKrw)} />
+        <Metric label="월평균 예정 배당" value={formatKrw(scheduledDividend.monthlyAverageKrw)} />
+        <Metric label="현재 배당수익률" value={formatPercent(portfolioDividend.dividendYield)} />
+      </Grid>
+
+      <DividendForecastView lines={scheduledDividend.lines} mode="holding" />
 
       <SectionHeader id="intent-section" title="의향서 제출" description="제출된 내용은 관리자가 검토한 뒤 상태를 변경합니다." />
 

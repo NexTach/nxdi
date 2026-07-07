@@ -52,6 +52,13 @@ function dividendPerShareKrw(record: DividendRecord, exchangeRate: number) {
     : record.annualDividendPerShare;
 }
 
+function lastDividendPerShareKrw(record: DividendRecord, exchangeRate: number) {
+  if (typeof record.lastDividendPerShare !== "number") return undefined;
+  return record.currency === "USD"
+    ? record.lastDividendPerShare * exchangeRate
+    : record.lastDividendPerShare;
+}
+
 function parsePaymentMonths(value: string) {
   try {
     const parsed = JSON.parse(value);
@@ -193,6 +200,9 @@ export async function forecastDividend(
     const annualDividendKrw = record
       ? estimatedQuantity * dividendPerShareKrw(record, portfolio.exchangeRate)
       : 0;
+    const lastDividendKrw = record
+      ? lastDividendPerShareKrw(record, portfolio.exchangeRate)
+      : undefined;
 
     return {
       symbol: holding.symbol,
@@ -202,6 +212,8 @@ export async function forecastDividend(
       allocationKrw,
       estimatedQuantity,
       annualDividendKrw,
+      lastDividendKrw:
+        typeof lastDividendKrw === "number" ? estimatedQuantity * lastDividendKrw : undefined,
       monthlyAverageKrw: annualDividendKrw / 12,
       expectedPaymentMonths: record?.expectedPaymentMonths ?? [],
       nextPaymentMonth: record ? getNextPaymentMonth(record.expectedPaymentMonths) : undefined
