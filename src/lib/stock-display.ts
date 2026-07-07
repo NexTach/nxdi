@@ -30,6 +30,18 @@ function cleanName(symbol: string, name?: string) {
     .trim();
 }
 
+function cleanSecondaryForAlias(alias: string, secondary?: string) {
+  const trimmedSecondary = clean(secondary);
+  if (!trimmedSecondary) return trimmedSecondary;
+
+  const escapedAlias = escapeRegExp(alias);
+  return trimmedSecondary
+    .replace(new RegExp(`^${escapedAlias}\\s*\\((.*)\\)$`, "i"), "$1")
+    .replace(new RegExp(`^${escapedAlias}\\s*[-:–—]\\s*`, "i"), "")
+    .replace(new RegExp(`^${escapedAlias}\\s+`, "i"), "")
+    .trim();
+}
+
 export function isKoreanStock(stock: StockIdentity) {
   const symbol = stock.symbol.trim().toUpperCase();
   return (
@@ -53,7 +65,8 @@ export function stockSecondaryLabel(stock: StockIdentity) {
   const alias = clean(stock.alias);
   if (alias) {
     const primaryWithoutAlias = stockPrimaryLabel({ ...stock, alias: undefined });
-    return primaryWithoutAlias !== alias ? primaryWithoutAlias : undefined;
+    const secondary = cleanSecondaryForAlias(alias, primaryWithoutAlias);
+    return secondary && secondary !== alias ? secondary : undefined;
   }
 
   const secondary = isKoreanStock(stock) ? stock.symbol : cleanName(stock.symbol, stock.name);

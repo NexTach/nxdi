@@ -131,7 +131,7 @@ export default async function Home({ searchParams }: HomeProps) {
     .map((holding) => ({
       id: holding.symbol,
       label: stockPrimaryLabel(holding),
-      description: stockFullLabel(holding),
+      description: stockSecondaryLabel(holding),
       value: holding.marketValueKrw
     }));
   const myInvestments = store.investmentIntents.filter((intent) => intent.userId === user.id);
