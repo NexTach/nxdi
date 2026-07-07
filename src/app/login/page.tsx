@@ -1,6 +1,7 @@
-import { LogIn } from "lucide-react";
-import { AppShell, CtaPanel, Form, Grid, Navigation, Notice, Stack, Top } from "@/app/components/tds";
-import { isProduction } from "@/lib/env";
+import { redirect } from "next/navigation";
+import { ToastStack, type ToastMessage } from "@/app/components/toast";
+import { AppShell } from "@/app/components/tds";
+import { getUserSession } from "@/lib/session";
 
 type LoginPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -16,44 +17,33 @@ function errorMessage(error?: string | string[]) {
   return null;
 }
 
+function loginToastMessages(message: string | null): ToastMessage[] {
+  if (!message) return [];
+  return [{ id: "login-error", title: message, tone: "error" }];
+}
+
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const user = await getUserSession();
+  if (user) redirect("/");
+
   const params = (await searchParams) ?? {};
   const message = errorMessage(params.error);
 
   return (
-    <AppShell>
-      <Navigation title="T-ETF" description="DataGSM 인증" />
+    <AppShell className="login-shell">
+      <ToastStack messages={loginToastMessages(message)} />
 
-      <Top
-        title="GSM 구성원만 이용할 수 있어요"
-        description="운영 포트폴리오와 예상 배당을 확인하고, 실제 입금 처리 없이 투자 또는 출금 의향만 제출합니다."
-      />
+      <section className="login-gate" aria-labelledby="login-title">
+        <div className="login-brand" aria-label="T-ETF">
+          <div className="login-brand-mark" aria-hidden="true">T</div>
+          <h1 id="login-title">T-ETF</h1>
+        </div>
 
-      <Grid columns={1}>
-        <CtaPanel className="login-panel">
-          <div>
-            <h2>DataGSM으로 계속하기</h2>
-            <p className="lede">
-              재학생과 졸업생만 이용할 수 있으며, 자퇴 상태로 확인되는 계정은 차단됩니다.
-            </p>
-          </div>
-          {message ? <Notice>{message}</Notice> : null}
-          <Stack>
-            <a className="button" href="/api/auth/datagsm/start">
-              <LogIn size={18} />
-              DataGSM으로 로그인
-            </a>
-            {!isProduction() ? (
-              <Form action="/api/auth/dev-login" method="post">
-                <input type="hidden" name="name" value="개발 사용자" />
-                <button className="secondary" type="submit">
-                  개발용 로그인
-                </button>
-              </Form>
-            ) : null}
-          </Stack>
-        </CtaPanel>
-      </Grid>
+        <a className="datagsm-login-button" href="/api/auth/datagsm/start">
+          <span className="datagsm-login-logo" aria-hidden="true" />
+          <span>DataGSM으로 로그인</span>
+        </a>
+      </section>
     </AppShell>
   );
 }

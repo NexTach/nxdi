@@ -10,8 +10,8 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
-  return <main className="shell">{children}</main>;
+export function AppShell({ children, className }: WithChildren) {
+  return <main className={cx("shell", className)}>{children}</main>;
 }
 
 export function Navigation({

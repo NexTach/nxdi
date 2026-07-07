@@ -1,5 +1,6 @@
 import { LockKeyhole, UsersRound } from "lucide-react";
 import { AdminHoldingForm } from "./AdminHoldingForm";
+import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
   AppShell,
   Badge,
@@ -9,7 +10,6 @@ import {
   Metric,
   MutedText,
   Navigation,
-  Notice,
   Panel,
   SectionHeader,
   TableSurface,
@@ -31,6 +31,57 @@ function statusClass(status: string): "accepted" | "rejected" | "pending" {
   if (status === "ACCEPTED") return "accepted";
   if (status === "REJECTED") return "rejected";
   return "pending";
+}
+
+function firstParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function adminToastMessages(params: Record<string, string | string[] | undefined>): ToastMessage[] {
+  const messages: ToastMessage[] = [];
+  const portfolio = firstParam(params.portfolio);
+  const dividend = firstParam(params.dividend);
+  const error = firstParam(params.error);
+
+  if (params.updated) {
+    messages.push({ id: "updated", title: "상태가 저장되었습니다", tone: "success" });
+  }
+  if (portfolio) {
+    messages.push({
+      id: `portfolio-${portfolio}`,
+      title: portfolio === "deleted" ? "포트폴리오 종목이 삭제되었습니다" : "포트폴리오가 저장되었습니다",
+      tone: "success"
+    });
+  }
+  if (dividend) {
+    const title =
+      dividend === "synced"
+        ? "배당 데이터가 동기화되었습니다"
+        : dividend === "deleted"
+          ? "배당 데이터가 삭제되었습니다"
+          : "배당 데이터가 저장되었습니다";
+    messages.push({ id: `dividend-${dividend}`, title, tone: "success" });
+  }
+  if (error) {
+    const errorMessages: Record<string, string> = {
+      invalid_status: "상태 값을 다시 확인해주세요",
+      invalid_holding: "포트폴리오 입력값을 다시 확인해주세요",
+      invalid_delete: "삭제할 종목을 다시 확인해주세요",
+      invalid_exchange_rate: "환율 입력값을 다시 확인해주세요",
+      invalid_dividend: "배당 입력값을 다시 확인해주세요",
+      invalid_dividend_months: "배당 지급월을 다시 확인해주세요",
+      invalid_dividend_delete: "삭제할 배당 데이터를 다시 확인해주세요",
+      invalid_dividend_sync: "동기화할 종목을 다시 확인해주세요",
+      dividend_sync_failed: "외부 배당 데이터를 가져오지 못했습니다"
+    };
+    messages.push({
+      id: `error-${error}`,
+      title: errorMessages[error] ?? "요청을 처리하지 못했습니다",
+      tone: "error"
+    });
+  }
+
+  return messages;
 }
 
 function formatDividendAmount(value: number, currency: "KRW" | "USD") {
@@ -125,6 +176,8 @@ export default async function AdminPage({ searchParams }: AdminProps) {
 
   return (
     <AppShell>
+      <ToastStack messages={adminToastMessages(params)} />
+
       <Navigation
         title="T-ETF 관리자"
         description="투자/출금 의향서 확인 및 상태 변경"
@@ -134,10 +187,6 @@ export default async function AdminPage({ searchParams }: AdminProps) {
           </ButtonLink>
         }
       />
-
-      {params.updated ? <Notice className="mt-12">상태가 저장되었습니다.</Notice> : null}
-      {params.portfolio ? <Notice className="mt-12">포트폴리오가 저장되었습니다.</Notice> : null}
-      {params.dividend ? <Notice className="mt-12">배당 데이터가 저장되었습니다.</Notice> : null}
 
       <Top
         title="의향서와 포트폴리오를 관리해요"

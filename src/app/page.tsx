@@ -1,6 +1,7 @@
 import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LogOut, RefreshCw, ShieldAlert } from "lucide-react";
 import { redirect } from "next/navigation";
 import { SparkLineChart } from "@/app/components/stock-chart";
+import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
   AppShell,
   Badge,
@@ -43,6 +44,26 @@ type HomeProps = {
 
 function firstParam(value?: string | string[]) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function homeToastMessages(params: Record<string, string | string[] | undefined>): ToastMessage[] {
+  const messages: ToastMessage[] = [];
+  if (params.submitted) {
+    messages.push({
+      id: "submitted",
+      title: "의향서가 제출되었습니다",
+      description: "관리자가 확인 후 상태를 변경합니다.",
+      tone: "success"
+    });
+  }
+  if (params.error) {
+    messages.push({
+      id: "error",
+      title: "입력값을 다시 확인해주세요",
+      tone: "error"
+    });
+  }
+  return messages;
 }
 
 function statusClass(status: string): "accepted" | "rejected" | "pending" {
@@ -113,6 +134,8 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <AppShell>
+      <ToastStack messages={homeToastMessages(params)} />
+
       <Navigation
         title="T-ETF"
         description={`${user.name} · ${user.userType === "alumni" ? "졸업생" : "재학생"}`}
@@ -144,9 +167,6 @@ export default async function Home({ searchParams }: HomeProps) {
           </>
         }
       />
-
-      {params.submitted ? <Notice className="mt-12">의향서가 제출되었습니다. 관리자가 확인 후 상태를 변경합니다.</Notice> : null}
-      {params.error ? <Notice className="mt-12">입력값을 다시 확인해주세요.</Notice> : null}
 
       <Grid columns={4} className="mt-16">
         <Metric label="포트폴리오 평가금액" value={formatKrw(portfolio.totalMarketValueKrw)} />
