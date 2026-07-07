@@ -119,6 +119,7 @@ export default async function Home({ searchParams }: HomeProps) {
       id: holding.symbol,
       label: stockPrimaryLabel(holding),
       description: stockSecondaryLabel(holding),
+      href: `/stocks/${encodeURIComponent(holding.symbol)}`,
       value: holding.marketValueKrw
     }));
   return (

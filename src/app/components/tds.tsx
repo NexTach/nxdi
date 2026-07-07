@@ -13,6 +13,7 @@ export type CompositionChartItem = {
   description?: string;
   value: number;
   color?: string;
+  href?: string;
 };
 
 type CssVars = CSSProperties & Record<"--tds-chart-color", string>;
@@ -357,35 +358,68 @@ export function CompositionChart({
         <svg role="img" viewBox={`0 0 ${size} ${size}`}>
           <circle className="tds-composition-track" cx={center} cy={center} r={radius} />
           {chartItems.map((item) => (
-            <circle
-              className="tds-composition-slice"
-              cx={center}
-              cy={center}
-              key={item.id}
-              r={radius}
-              stroke={item.color}
-              strokeDasharray={`${item.dashLength} ${circumference - item.dashLength}`}
-              strokeDashoffset={item.dashOffset}
-            >
-              <title>{`${item.label} ${formatTdsPercent(item.ratio)}`}</title>
-            </circle>
+            item.href ? (
+              <a
+                aria-label={`${item.label} 상세 보기`}
+                className="tds-composition-slice-link"
+                href={item.href}
+                key={item.id}
+              >
+                <circle
+                  className="tds-composition-slice"
+                  cx={center}
+                  cy={center}
+                  r={radius}
+                  stroke={item.color}
+                  strokeDasharray={`${item.dashLength} ${circumference - item.dashLength}`}
+                  strokeDashoffset={item.dashOffset}
+                >
+                  <title>{`${item.label} ${formatTdsPercent(item.ratio)}`}</title>
+                </circle>
+              </a>
+            ) : (
+              <circle
+                className="tds-composition-slice"
+                cx={center}
+                cy={center}
+                key={item.id}
+                r={radius}
+                stroke={item.color}
+                strokeDasharray={`${item.dashLength} ${circumference - item.dashLength}`}
+                strokeDashoffset={item.dashOffset}
+              >
+                <title>{`${item.label} ${formatTdsPercent(item.ratio)}`}</title>
+              </circle>
+            )
           ))}
         </svg>
       </div>
       <div className="tds-composition-legend">
-        {chartItems.map((item) => (
-          <div className="tds-composition-legend-row" key={item.id}>
-            <span
-              className="tds-composition-dot"
-              style={{ "--tds-chart-color": item.color } as CssVars}
-            />
-            <div>
-              <strong>{item.label}</strong>
-              {item.description ? <span>{item.description}</span> : null}
+        {chartItems.map((item) => {
+          const content = (
+            <>
+              <span
+                className="tds-composition-dot"
+                style={{ "--tds-chart-color": item.color } as CssVars}
+              />
+              <div>
+                <strong>{item.label}</strong>
+                {item.description ? <span>{item.description}</span> : null}
+              </div>
+              <em>{formatTdsPercent(item.ratio)}</em>
+            </>
+          );
+
+          return item.href ? (
+            <Link className="tds-composition-legend-row clickable" href={item.href} key={item.id}>
+              {content}
+            </Link>
+          ) : (
+            <div className="tds-composition-legend-row" key={item.id}>
+              {content}
             </div>
-            <em>{formatTdsPercent(item.ratio)}</em>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
