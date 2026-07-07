@@ -17,7 +17,7 @@ import {
 } from "@/app/components/tds";
 import { isAdminUser } from "@/lib/admin";
 import { readDividendRecords } from "@/lib/dividends";
-import { formatDateTime, formatKrw, formatNumber, statusLabel } from "@/lib/format";
+import { formatCurrency, formatDateTime, formatKrw, formatNumber, statusLabel } from "@/lib/format";
 import { getManualPortfolioOverview } from "@/lib/portfolio-store";
 import { getUserSession } from "@/lib/session";
 import { readStore } from "@/lib/store";
@@ -86,8 +86,7 @@ function adminToastMessages(params: Record<string, string | string[] | undefined
 }
 
 function formatDividendAmount(value: number, currency: "KRW" | "USD") {
-  if (currency === "KRW") return formatKrw(value);
-  return `$${formatNumber(value, 4)}`;
+  return formatCurrency(value, currency, 4);
 }
 
 function StatusForm({

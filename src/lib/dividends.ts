@@ -168,6 +168,7 @@ export async function forecastDividend(
       estimatedQuantity,
       annualDividendKrw,
       monthlyAverageKrw: annualDividendKrw / 12,
+      expectedPaymentMonths: record?.expectedPaymentMonths ?? [],
       nextPaymentMonth: record ? getNextPaymentMonth(record.expectedPaymentMonths) : undefined
     };
   });

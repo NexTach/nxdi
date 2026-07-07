@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ComputedValue, Field, Form } from "@/app/components/tds";
+import { currencySymbol, formatCurrency } from "@/lib/format";
 import { stockPrimaryLabel, stockSecondaryLabel } from "@/lib/stock-display";
 import type { Holding, MarketCode } from "@/lib/types";
 
@@ -49,6 +50,11 @@ function formatHoldingNumber(value?: number, digits = 4) {
   return new Intl.NumberFormat("ko-KR", {
     maximumFractionDigits: digits
   }).format(value);
+}
+
+function formatHoldingCurrency(value: number | undefined, currency: "KRW" | "USD" | undefined, digits = 4) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "-";
+  return formatCurrency(value, currency ?? "USD", digits);
 }
 
 function normalizeMarketCode(value?: string, currency?: "KRW" | "USD", symbol?: string): MarketCode {
@@ -209,8 +215,8 @@ export function AdminHoldingForm({
           <strong>{stockPrimaryLabel(stock)}</strong>
           {secondaryLabel ? <span>{secondaryLabel}</span> : null}
           <em>
-            {formatHoldingNumber(quantity)}주 · 현재가 {formatHoldingNumber(lastPrice, 6)} · 평단{" "}
-            {formatHoldingNumber(averagePurchasePrice, 6)}
+            {formatHoldingNumber(quantity)}주 · 현재가 {formatHoldingCurrency(lastPrice, currency, 6)} · 평단{" "}
+            {formatHoldingCurrency(averagePurchasePrice, currency, 6)}
           </em>
         </div>
         <button className="secondary" type="button" onClick={() => setIsOpen(true)}>
@@ -368,7 +374,7 @@ export function AdminHoldingForm({
                 required
               />
             </Field>
-            <Field htmlFor={`price-${symbol ?? "new"}`} label="현재가">
+            <Field htmlFor={`price-${symbol ?? "new"}`} label={`현재가 (${currencySymbol(form.currency)})`}>
               <input
                 id={`price-${symbol ?? "new"}`}
                 name="lastPrice"
@@ -380,7 +386,7 @@ export function AdminHoldingForm({
                 required
               />
             </Field>
-            <Field htmlFor={`avg-${symbol ?? "new"}`} label="평단">
+            <Field htmlFor={`avg-${symbol ?? "new"}`} label={`평단 (${currencySymbol(form.currency)})`}>
               <input
                 id={`avg-${symbol ?? "new"}`}
                 name="averagePurchasePrice"
@@ -393,7 +399,7 @@ export function AdminHoldingForm({
                 }
               />
             </Field>
-            <Field htmlFor={`purchase-fx-${symbol ?? "new"}`} label="매입환율">
+            <Field htmlFor={`purchase-fx-${symbol ?? "new"}`} label="매입환율 (₩)">
               <input
                 id={`purchase-fx-${symbol ?? "new"}`}
                 name="purchaseExchangeRate"

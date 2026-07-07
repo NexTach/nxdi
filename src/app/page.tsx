@@ -1,6 +1,7 @@
 import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LogOut, RefreshCw, ShieldAlert } from "lucide-react";
 import { redirect } from "next/navigation";
-import { SparkLineChart } from "@/app/components/stock-chart";
+import { DividendForecastView } from "@/app/components/dividend-forecast-view";
+import { PortfolioPieChart, SparkLineChart } from "@/app/components/stock-chart";
 import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
   AppShell,
@@ -129,6 +130,14 @@ export default async function Home({ searchParams }: HomeProps) {
   const portfolioDailyPoints = pointsFromCandles(portfolioDailyCandles);
   const holdingReturnPoints = returnPoints(portfolioMonthlyCandles, portfolioDividend.costBasisKrw);
   const yieldPoints = dividendYieldPoints(portfolioMonthlyCandles, portfolioDividend.annualDividendKrw);
+  const portfolioAllocation = [...portfolio.holdings]
+    .filter((holding) => holding.marketValueKrw > 0)
+    .sort((a, b) => b.marketValueKrw - a.marketValueKrw)
+    .map((holding) => ({
+      symbol: holding.symbol,
+      name: stockFullLabel(holding),
+      valueKrw: holding.marketValueKrw
+    }));
   const myInvestments = store.investmentIntents.filter((intent) => intent.userId === user.id);
   const myWithdrawals = store.withdrawalIntents.filter((intent) => intent.userId === user.id);
   const myIntents = [...myInvestments, ...myWithdrawals];
@@ -261,6 +270,11 @@ export default async function Home({ searchParams }: HomeProps) {
         description={`마지막 갱신 ${formatDateTime(portfolio.fetchedAt)} · USD/KRW ${formatNumber(portfolio.exchangeRate, 2)}원`}
       />
 
+      <Panel className="portfolio-allocation-panel">
+        <h2>구성 종목 비중</h2>
+        <PortfolioPieChart slices={portfolioAllocation} />
+      </Panel>
+
       <List>
         {portfolio.holdings.map((holding) => {
           const chart = dailyCharts.get(holding.symbol);
@@ -293,28 +307,9 @@ export default async function Home({ searchParams }: HomeProps) {
         })}
       </List>
 
-      <SectionHeader title="종목별 예상 배당" description="배정금액, 예상수량, 다음 예상 지급월을 함께 확인합니다." />
+      <SectionHeader title="예상 배당" description="가정 투자금 기준 예상 배당을 월별 또는 종목별로 확인합니다." />
 
-      <List>
-        {forecast.lines.map((line) => {
-          const secondaryLabel = stockSecondaryLabel(line);
-          return (
-            <ListRow
-              key={line.symbol}
-              title={stockPrimaryLabel(line)}
-              description={`${secondaryLabel ? `${secondaryLabel} · ` : ""}배정 ${formatKrw(line.allocationKrw)} · 예상 ${formatNumber(line.estimatedQuantity, 5)}주`}
-              value={
-                <>
-                  {formatKrw(line.monthlyAverageKrw)}
-                  <RowMeta>
-                    연 {formatKrw(line.annualDividendKrw)} · {line.nextPaymentMonth ? `${line.nextPaymentMonth}월` : "지급월 없음"}
-                  </RowMeta>
-                </>
-              }
-            />
-          );
-        })}
-      </List>
+      <DividendForecastView lines={forecast.lines} />
 
       <SectionHeader id="intent-section" title="의향서 제출" description="제출된 내용은 관리자가 검토한 뒤 상태를 변경합니다." />
 

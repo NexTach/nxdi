@@ -19,7 +19,7 @@ import {
   holdingReturnCandles as buildHoldingReturnCandles
 } from "@/lib/chart-metrics";
 import { getDividendRecord } from "@/lib/dividends";
-import { formatKrw, formatNumber } from "@/lib/format";
+import { formatCurrency, formatKrw, formatNumber } from "@/lib/format";
 import { fetchMarketCandles } from "@/lib/market-data";
 import { getManualPortfolioOverview } from "@/lib/portfolio-store";
 import { getUserSession } from "@/lib/session";
@@ -47,14 +47,12 @@ function RatePill({ value }: { value?: number }) {
 }
 
 function formatPrice(holding: Holding) {
-  if (holding.currency === "USD") return `$${formatNumber(holding.lastPrice, 2)}`;
-  return formatKrw(holding.lastPrice);
+  return formatCurrency(holding.lastPrice, holding.currency, 2);
 }
 
 function formatDividendAmount(record?: DividendRecord) {
   if (!record) return "-";
-  if (record.currency === "USD") return `$${formatNumber(record.annualDividendPerShare, 4)}`;
-  return formatKrw(record.annualDividendPerShare);
+  return formatCurrency(record.annualDividendPerShare, record.currency, 4);
 }
 
 function formatPaymentMonths(months?: number[]) {
@@ -207,9 +205,7 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
           title="평균 매수가"
           value={
             holding.averagePurchasePrice
-              ? holding.currency === "USD"
-                ? `$${formatNumber(holding.averagePurchasePrice, 2)}`
-                : formatKrw(holding.averagePurchasePrice)
+              ? formatCurrency(holding.averagePurchasePrice, holding.currency, 2)
               : "-"
           }
         />
