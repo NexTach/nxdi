@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 import { CandleChart } from "@/app/components/stock-chart";
 import {
   AppShell,
-  ButtonLink,
   Grid,
   List,
   ListRow,
@@ -125,14 +124,9 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
       <Navigation
         title="T-ETF"
         description={`${user.name} · 지표 상세`}
-        actions={
-          <ButtonLink href="/" variant="secondary">
-            포트폴리오
-          </ButtonLink>
-        }
       />
 
-      <Top title={labels.title} description={labels.description} />
+      <Top title={labels.title} description={labels.description} backLink={{ href: "/" }} />
 
       <Grid columns={4} className="mt-16">
         <Metric label="현재 지표" value={<RatePill value={currentRate} />} />

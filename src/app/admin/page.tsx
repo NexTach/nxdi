@@ -4,7 +4,6 @@ import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
   AppShell,
   Badge,
-  ButtonLink,
   CtaPanel,
   Grid,
   Metric,
@@ -120,16 +119,12 @@ function AdminGate({ signedIn }: { signedIn: boolean }) {
       <Navigation
         title="관리자 로그인"
         description="의향서 상태 관리"
-        actions={
-          <ButtonLink href="/" variant="secondary">
-            사용자 화면
-          </ButtonLink>
-        }
       />
 
       <Top
         title="관리자 권한이 필요해요"
         description="DataGSM 인증 계정이 관리자 목록에 포함되어 있어야 운영 화면에 접근할 수 있습니다."
+        backLink={{ href: "/" }}
       />
 
       <CtaPanel className="max-w-gate">
@@ -181,16 +176,12 @@ export default async function AdminPage({ searchParams }: AdminProps) {
       <Navigation
         title="T-ETF 관리자"
         description="투자/출금 의향서 확인 및 상태 변경"
-        actions={
-          <ButtonLink href="/" variant="secondary">
-            사용자 화면
-          </ButtonLink>
-        }
       />
 
       <Top
         title="의향서와 포트폴리오를 관리해요"
         description="운영 데이터가 사용자 화면의 예상 배당 계산과 제출 내역 상태에 바로 반영됩니다."
+        backLink={{ href: "/" }}
       />
 
       <Grid columns={3} className="mt-16">

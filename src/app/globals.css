@@ -358,6 +358,24 @@ button.full,
   max-width: 680px;
 }
 
+.hero-back-link {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: var(--tds-text-sm);
+  font-weight: 800;
+  gap: 6px;
+  line-height: 1;
+  margin-bottom: var(--tds-space-3);
+  min-height: 24px;
+  text-underline-offset: 3px;
+}
+
+.hero-back-link:hover {
+  color: var(--accent-dark);
+  text-decoration: underline;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;

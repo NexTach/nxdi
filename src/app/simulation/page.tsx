@@ -47,22 +47,18 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
         title="T-ETF 투자 시뮬레이션"
         description={`${user.name} · 현재 포트폴리오 비중 기준`}
         actions={
-          <>
-            <ButtonLink href="/" variant="secondary">
-              홈
-            </ButtonLink>
-            <form action="/api/auth/logout" method="post">
-              <button className="ghost" type="submit" title="로그아웃">
-                <LogOut size={18} />
-              </button>
-            </form>
-          </>
+          <form action="/api/auth/logout" method="post">
+            <button className="ghost" type="submit" title="로그아웃">
+              <LogOut size={18} />
+            </button>
+          </form>
         }
       />
 
       <Top
         title="투자 배당 시뮬레이션"
         description="가정 투자금을 현재 포트폴리오 비중대로 배정했을 때의 예상 배당을 계산합니다."
+        backLink={{ href: "/" }}
         actions={
           <ButtonLink href="#forecast-section">
             결과 보기

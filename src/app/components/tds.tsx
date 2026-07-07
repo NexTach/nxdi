@@ -1,4 +1,5 @@
 import type { CSSProperties, ElementType, FormHTMLAttributes, ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 type WithChildren = {
@@ -75,16 +76,27 @@ export function Top({
   description,
   actions,
   id,
-  className
+  className,
+  backLink
 }: {
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
   id?: string;
   className?: string;
+  backLink?: {
+    href: string;
+    label?: string;
+  };
 }) {
   return (
     <section className={cx("hero-band", className)} id={id}>
+      {backLink ? (
+        <Link className="hero-back-link" href={backLink.href}>
+          <ArrowLeft size={16} aria-hidden="true" />
+          <span>{backLink.label ?? "돌아가기"}</span>
+        </Link>
+      ) : null}
       <h2>{title}</h2>
       {description ? <p>{description}</p> : null}
       {actions ? <div className="hero-actions">{actions}</div> : null}
