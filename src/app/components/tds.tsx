@@ -77,6 +77,22 @@ export function ButtonLink({
   );
 }
 
+export function TextLink({
+  href,
+  children,
+  className
+}: {
+  href: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link className={cx("tds-text-link", className)} href={href}>
+      {children}
+    </Link>
+  );
+}
+
 export function SectionHeader({
   title,
   description,
@@ -181,8 +197,12 @@ export function ComputedValue({ label, value }: { label: ReactNode; value: React
   );
 }
 
-export function List({ children, className }: WithChildren) {
-  return <section className={cx("list", className)}>{children}</section>;
+export function List({ children, className, id }: WithChildren & { id?: string }) {
+  return (
+    <section className={cx("list", className)} id={id}>
+      {children}
+    </section>
+  );
 }
 
 export function ListRow({

@@ -15,6 +15,24 @@ export type MarketQuote = SymbolSearchResult & {
   lastPrice?: number;
 };
 
+export type MarketCandle = {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
+export type MarketChart = {
+  symbol: string;
+  currency: "KRW" | "USD";
+  marketCountry: "KR" | "US";
+  candles: MarketCandle[];
+  previousClose?: number;
+  regularMarketPrice?: number;
+  changeRate?: number;
+};
+
 type FmpSearchRow = {
   symbol?: string;
   name?: string;
@@ -54,6 +72,19 @@ type YahooChartMeta = {
   chartPreviousClose?: number;
   longName?: string;
   shortName?: string;
+};
+
+type YahooChartResult = {
+  meta?: YahooChartMeta;
+  timestamp?: number[];
+  indicators?: {
+    quote?: Array<{
+      open?: Array<number | null>;
+      high?: Array<number | null>;
+      low?: Array<number | null>;
+      close?: Array<number | null>;
+    }>;
+  };
 };
 
 type YahooDividendEvent = {
@@ -262,6 +293,83 @@ export async function fetchMarketQuote(symbol: string): Promise<MarketQuote | nu
     marketCountry: inferMarketCountry(quote.symbol, quote.currency),
     lastPrice: quote.regularMarketPrice ?? quote.chartPreviousClose,
     source: "yahoo"
+  };
+}
+
+export async function fetchMarketCandles(
+  symbol: string,
+  {
+    range = "3mo",
+    interval = "1d",
+    limit = 24
+  }: {
+    range?: "1mo" | "3mo" | "6mo" | "1y" | "5y";
+    interval?: "1d" | "1wk" | "1mo";
+    limit?: number;
+  } = {}
+): Promise<MarketChart | null> {
+  const trimmed = symbol.trim();
+  if (!trimmed) return null;
+
+  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooLookupSymbol(trimmed))}`);
+  url.searchParams.set("range", range);
+  url.searchParams.set("interval", interval);
+  const response = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    cache: "no-store"
+  });
+
+  if (!response.ok) return null;
+
+  const json = (await response.json()) as { chart?: { result?: YahooChartResult[] } };
+  const result = json.chart?.result?.[0];
+  const meta = result?.meta;
+  const quote = result?.indicators?.quote?.[0];
+  if (!result?.timestamp || !meta?.symbol || !quote) return null;
+
+  const candles = result.timestamp
+    .map((timestamp, index) => {
+      const open = quote.open?.[index];
+      const high = quote.high?.[index];
+      const low = quote.low?.[index];
+      const close = quote.close?.[index];
+      if (
+        typeof open !== "number" ||
+        typeof high !== "number" ||
+        typeof low !== "number" ||
+        typeof close !== "number"
+      ) {
+        return null;
+      }
+
+      return {
+        date: new Date(timestamp * 1000).toISOString(),
+        open,
+        high,
+        low,
+        close
+      };
+    })
+    .filter((candle): candle is MarketCandle => Boolean(candle))
+    .slice(-limit);
+
+  if (candles.length === 0) return null;
+
+  const previousClose = meta.chartPreviousClose;
+  const lastClose = candles.at(-1)?.close;
+  const changeRate =
+    typeof previousClose === "number" && previousClose > 0 && typeof lastClose === "number"
+      ? (lastClose - previousClose) / previousClose
+      : undefined;
+
+  return {
+    symbol: normalizeSymbolForStorage(meta.symbol, meta.currency),
+    currency: inferCurrency(meta.symbol, meta.currency),
+    marketCountry: inferMarketCountry(meta.symbol, meta.currency),
+    candles,
+    previousClose,
+    regularMarketPrice: meta.regularMarketPrice,
+    changeRate
   };
 }
 

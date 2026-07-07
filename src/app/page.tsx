@@ -1,5 +1,6 @@
 import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LogOut, RefreshCw, ShieldAlert } from "lucide-react";
 import { redirect } from "next/navigation";
+import { CandleChart, SparkLineChart } from "@/app/components/stock-chart";
 import {
   AppShell,
   Badge,
@@ -18,13 +19,16 @@ import {
   Panel,
   RowMeta,
   SectionHeader,
+  TextLink,
   Top
 } from "@/app/components/tds";
 import { forecastDividend, summarizePortfolioDividend } from "@/lib/dividends";
 import { formatDateTime, formatKrw, formatNumber, statusLabel } from "@/lib/format";
+import { fetchMarketCandles, type MarketCandle, type MarketChart } from "@/lib/market-data";
 import { getManualPortfolioOverview } from "@/lib/portfolio-store";
 import { getUserSession } from "@/lib/session";
 import { readStore } from "@/lib/store";
+import type { Holding } from "@/lib/types";
 
 type HomeProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -45,6 +49,83 @@ function formatPercent(value?: number) {
   return `${formatNumber(value * 100, 2)}%`;
 }
 
+function rateTone(value?: number) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value === 0) return "flat";
+  return value > 0 ? "up" : "down";
+}
+
+function RatePill({ value }: { value?: number }) {
+  return <span className={`rate-pill ${rateTone(value)}`}>{formatPercent(value)}</span>;
+}
+
+function changeRateFromCandles(candles: MarketCandle[]) {
+  const latest = candles.at(-1);
+  const previous = candles.at(-2);
+  if (!latest || !previous || previous.close <= 0) return undefined;
+  return (latest.close - previous.close) / previous.close;
+}
+
+function sampleCandles(candles: MarketCandle[], maxPoints = 52) {
+  if (candles.length <= maxPoints) return candles;
+  const step = candles.length / maxPoints;
+  return Array.from({ length: maxPoints }, (_, index) => candles[Math.floor(index * step)]).filter(Boolean);
+}
+
+function aggregatePortfolioCandles({
+  holdings,
+  charts,
+  exchangeRate
+}: {
+  holdings: Holding[];
+  charts: Map<string, MarketChart | null>;
+  exchangeRate: number;
+}) {
+  const buckets = new Map<string, MarketCandle>();
+
+  for (const holding of holdings) {
+    const chart = charts.get(holding.symbol);
+    if (!chart) continue;
+    const multiplier = holding.quantity * (holding.currency === "USD" ? exchangeRate : 1);
+
+    for (const candle of chart.candles) {
+      const date = candle.date.slice(0, 10);
+      const current = buckets.get(date) ?? {
+        date: candle.date,
+        open: 0,
+        high: 0,
+        low: 0,
+        close: 0
+      };
+
+      buckets.set(date, {
+        date: candle.date,
+        open: current.open + candle.open * multiplier,
+        high: current.high + candle.high * multiplier,
+        low: current.low + candle.low * multiplier,
+        close: current.close + candle.close * multiplier
+      });
+    }
+  }
+
+  return [...buckets.values()].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+function returnPoints(candles: MarketCandle[], costBasisKrw: number) {
+  if (costBasisKrw <= 0) return [];
+  return candles.map((candle) => ({
+    date: candle.date,
+    value: (candle.close - costBasisKrw) / costBasisKrw
+  }));
+}
+
+function dividendYieldPoints(candles: MarketCandle[], annualDividendKrw: number) {
+  if (annualDividendKrw <= 0) return [];
+  return candles.map((candle) => ({
+    date: candle.date,
+    value: candle.close > 0 ? annualDividendKrw / candle.close : 0
+  }));
+}
+
 export default async function Home({ searchParams }: HomeProps) {
   const user = await getUserSession();
   if (!user) redirect("/login");
@@ -56,6 +137,35 @@ export default async function Home({ searchParams }: HomeProps) {
     forecastDividend(portfolio, amount),
     summarizePortfolioDividend(portfolio)
   ]);
+  const [dailyChartEntries, monthlyChartEntries] = await Promise.all([
+    Promise.all(
+      portfolio.holdings.map(async (holding) => [
+        holding.symbol,
+        await fetchMarketCandles(holding.symbol, { range: "1y", interval: "1d", limit: 252 }).catch(() => null)
+      ] as const)
+    ),
+    Promise.all(
+      portfolio.holdings.map(async (holding) => [
+        holding.symbol,
+        await fetchMarketCandles(holding.symbol, { range: "5y", interval: "1mo", limit: 60 }).catch(() => null)
+      ] as const)
+    )
+  ]);
+  const dailyCharts = new Map(dailyChartEntries);
+  const monthlyCharts = new Map(monthlyChartEntries);
+  const portfolioDailyCandles = aggregatePortfolioCandles({
+    holdings: portfolio.holdings,
+    charts: dailyCharts,
+    exchangeRate: portfolio.exchangeRate
+  });
+  const portfolioMonthlyCandles = aggregatePortfolioCandles({
+    holdings: portfolio.holdings,
+    charts: monthlyCharts,
+    exchangeRate: portfolio.exchangeRate
+  });
+  const portfolioDailyChangeRate = changeRateFromCandles(portfolioDailyCandles);
+  const holdingReturnPoints = returnPoints(portfolioMonthlyCandles, portfolioDividend.costBasisKrw);
+  const yieldPoints = dividendYieldPoints(portfolioMonthlyCandles, portfolioDividend.annualDividendKrw);
   const myInvestments = store.investmentIntents.filter((intent) => intent.userId === user.id);
   const myWithdrawals = store.withdrawalIntents.filter((intent) => intent.userId === user.id);
   const myIntents = [...myInvestments, ...myWithdrawals];
@@ -99,9 +209,90 @@ export default async function Home({ searchParams }: HomeProps) {
 
       <Grid columns={4} className="mt-16">
         <Metric label="포트폴리오 평가금액" value={formatKrw(portfolio.totalMarketValueKrw)} />
-        <Metric label="현재 수익률" value={formatPercent(portfolioDividend.totalReturnRate)} />
-        <Metric label="배당수익률" value={formatPercent(portfolioDividend.dividendYield)} />
-        <Metric label="연 예상 배당" value={formatKrw(portfolioDividend.annualDividendKrw)} />
+        <Metric
+          label={<TextLink className="metric-card-link" href="#daily-change-detail">오늘 등락률</TextLink>}
+          value={
+            <div className="metric-detail">
+              <RatePill value={portfolioDailyChangeRate} />
+              <TextLink className="chart-link" href="#daily-change-detail">
+                <CandleChart candles={sampleCandles(portfolioDailyCandles)} label="포트폴리오 1년 일봉 미니 캔들 차트" />
+              </TextLink>
+            </div>
+          }
+        />
+        <Metric
+          label={<TextLink className="metric-card-link" href="#holding-return-detail">보유 수익률</TextLink>}
+          value={
+            <div className="metric-detail">
+              <RatePill value={portfolioDividend.totalReturnRate} />
+              <TextLink className="chart-link" href="#holding-return-detail">
+                <SparkLineChart
+                  label="보유 수익률 추세"
+                  points={holdingReturnPoints}
+                  valueFormat="percent"
+                />
+              </TextLink>
+            </div>
+          }
+        />
+        <Metric
+          label={<TextLink className="metric-card-link" href="#dividend-yield-detail">배당수익률</TextLink>}
+          value={
+            <div className="metric-detail">
+              <RatePill value={portfolioDividend.dividendYield} />
+              <TextLink className="chart-link" href="#dividend-yield-detail">
+                <SparkLineChart
+                  label="배당수익률 추세"
+                  points={yieldPoints}
+                  valueFormat="percent"
+                />
+              </TextLink>
+            </div>
+          }
+        />
+      </Grid>
+
+      <SectionHeader
+        title="지표 상세"
+        description="등락률은 최근 1년 일봉, 보유 수익률과 배당수익률은 최근 5년 월봉 기준입니다."
+      />
+
+      <Grid columns={3}>
+        <Panel className="metric-detail-panel">
+          <h2 id="daily-change-detail">오늘 등락률</h2>
+          <CandleChart
+            candles={portfolioDailyCandles}
+            label="포트폴리오 최근 1년 일봉 상세 캔들 차트"
+            size="detail"
+            valueFormat="krw"
+          />
+        </Panel>
+        <Panel className="metric-detail-panel">
+          <h2 id="holding-return-detail">보유 수익률</h2>
+          <SparkLineChart
+            label="보유 수익률 상세 차트"
+            points={holdingReturnPoints}
+            valueFormat="percent"
+          />
+          <List>
+            <ListRow title="현재 보유 수익률" value={<RatePill value={portfolioDividend.totalReturnRate} />} />
+            <ListRow title="평가금액" value={formatKrw(portfolio.totalMarketValueKrw)} />
+            <ListRow title="매입원금" value={formatKrw(portfolioDividend.costBasisKrw)} />
+          </List>
+        </Panel>
+        <Panel className="metric-detail-panel">
+          <h2 id="dividend-yield-detail">배당수익률</h2>
+          <SparkLineChart
+            label="배당수익률 상세 차트"
+            points={yieldPoints}
+            valueFormat="percent"
+          />
+          <List>
+            <ListRow title="현재 배당수익률" value={<RatePill value={portfolioDividend.dividendYield} />} />
+            <ListRow title="연 예상 배당" value={formatKrw(portfolioDividend.annualDividendKrw)} />
+            <ListRow title="월평균 배당" value={formatKrw(portfolioDividend.monthlyAverageKrw)} />
+          </List>
+        </Panel>
       </Grid>
 
       <SectionHeader title="예상 배당 계산" description="가정 투자금 기준으로 배정금액과 예상 배당을 계산합니다." />
@@ -141,14 +332,29 @@ export default async function Home({ searchParams }: HomeProps) {
       <SectionHeader id="portfolio-section" title="현재 포트폴리오" description={`마지막 갱신 ${formatDateTime(portfolio.fetchedAt)}`} />
 
       <List>
-        {portfolio.holdings.map((holding) => (
-          <ListRow
-            key={holding.symbol}
-            title={holding.symbol}
-            description={`${holding.name} · ${formatNumber(holding.quantity, 4)}주 · 손익률 ${formatPercent(holding.profitLossRate)}`}
-            value={formatKrw(holding.marketValueKrw)}
-          />
-        ))}
+        {portfolio.holdings.map((holding) => {
+          const chart = dailyCharts.get(holding.symbol);
+          const href = `/stocks/${encodeURIComponent(holding.symbol)}`;
+
+          return (
+            <ListRow
+              key={holding.symbol}
+              title={<TextLink href={href}>{holding.symbol}</TextLink>}
+              description={`${holding.name} · ${formatNumber(holding.quantity, 4)}주 · 보유 수익률 ${formatPercent(holding.profitLossRate)}`}
+              value={
+                <div className="holding-row-value">
+                  <TextLink className="chart-link" href={href}>
+                    <CandleChart candles={sampleCandles(chart?.candles ?? [])} label={`${holding.symbol} 최근 1년 미니 캔들 차트`} />
+                  </TextLink>
+                  <div className="holding-row-price">
+                    <span>{formatKrw(holding.marketValueKrw)}</span>
+                    <RatePill value={chart?.changeRate} />
+                  </div>
+                </div>
+              }
+            />
+          );
+        })}
       </List>
 
       <SectionHeader title="종목별 예상 배당" description="배정금액, 예상수량, 다음 예상 지급월을 함께 확인합니다." />
