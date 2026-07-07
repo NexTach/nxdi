@@ -971,15 +971,18 @@ tbody tr:last-child td {
 
 .search-result {
   align-items: start;
+  align-self: stretch;
   background: transparent;
   border-radius: var(--tds-radius-sm);
   color: var(--text);
   display: grid;
   gap: 2px;
   justify-content: stretch;
+  justify-items: start;
   min-height: auto;
   padding: var(--tds-space-2);
   text-align: left;
+  width: 100%;
 }
 
 .search-result:hover {
