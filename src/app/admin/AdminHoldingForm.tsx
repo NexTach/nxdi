@@ -249,6 +249,19 @@ export function AdminHoldingForm({
         </Field>
         <ComputedValue label="손익률" value={computedRate === null ? "-" : `${computedRate.toFixed(2)}%`} />
         <button type="submit">{symbol ? "수정" : "추가"}</button>
+        {symbol ? (
+          <button
+            className="ghost"
+            formAction="/api/admin/portfolio/delete"
+            formMethod="post"
+            formNoValidate
+            name="symbol"
+            type="submit"
+            value={symbol}
+          >
+            삭제
+          </button>
+        ) : null}
         {!symbol ? (
           <button className="ghost" type="button" onClick={() => setIsOpen(false)}>
             취소

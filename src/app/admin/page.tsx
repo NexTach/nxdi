@@ -152,15 +152,6 @@ export default async function AdminPage({ searchParams }: AdminProps) {
 
       <SectionHeader title="운영 포트폴리오" description="보유 종목, 수량, 현재가, USD 매입환율을 관리합니다." />
 
-      <Grid columns={3}>
-        <Metric label="실시간 USD/KRW" value={`${formatNumber(portfolio.exchangeRate, 2)}원`} />
-        <Metric label="환율 갱신" value={formatDateTime(portfolio.exchangeRateFetchedAt)} />
-        <Metric
-          label="환율 출처"
-          value={portfolio.exchangeRateSource === "open.er-api.com" ? "ExchangeRate-API" : "기본값"}
-        />
-      </Grid>
-
       <Panel>
         <h2>운영 포트폴리오 관리</h2>
         <TableSurface className="portfolio-table mt-16">
@@ -169,7 +160,6 @@ export default async function AdminPage({ searchParams }: AdminProps) {
               <tr>
                 <th>종목 수정</th>
                 <th>평가금액</th>
-                <th>삭제</th>
               </tr>
             </thead>
             <tbody>
@@ -179,18 +169,10 @@ export default async function AdminPage({ searchParams }: AdminProps) {
                     <AdminHoldingForm {...holding} />
                   </td>
                   <td>{formatKrw(holding.marketValueKrw)}</td>
-                  <td>
-                    <form action="/api/admin/portfolio/delete" method="post">
-                      <input type="hidden" name="symbol" value={holding.symbol} />
-                      <button className="ghost" type="submit">
-                        삭제
-                      </button>
-                    </form>
-                  </td>
                 </tr>
               ))}
               <tr>
-                <td colSpan={3}>
+                <td colSpan={2}>
                   <AdminHoldingForm />
                 </td>
               </tr>
