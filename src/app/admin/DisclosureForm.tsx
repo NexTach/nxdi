@@ -2,6 +2,7 @@
 
 import { Plus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import { Field, Form } from "@/app/components/tds";
 import { currencySymbol } from "@/lib/format";
 import { stockPrimaryLabel, stockSecondaryLabel } from "@/lib/stock-display";
@@ -363,29 +364,29 @@ function TradeEditor({
           />
         </Field>
         <Field htmlFor={`price-${trade.clientId}`} label={`체결가 (${currencySymbol(trade.currency)})`}>
-          <input
+          <FormattedNumberInput
+            allowDecimal
             id={`price-${trade.clientId}`}
             min="0"
-            placeholder={trade.currency === "USD" ? "예: 78.5" : "예: 12000"}
+            placeholder={trade.currency === "USD" ? "예: 78.5" : "예: 12,000"}
             required
             step="0.000001"
-            type="number"
             value={trade.orderPrice}
-            onChange={(event) => update({ orderPrice: event.target.value })}
+            onValueChange={(value) => update({ orderPrice: value })}
           />
         </Field>
         <Field htmlFor={`exchange-${trade.clientId}`} label="기준환율 (₩)">
-          <input
+          <FormattedNumberInput
+            allowDecimal
             disabled={trade.currency !== "USD"}
             id={`exchange-${trade.clientId}`}
             max="3000"
             min="500"
-            placeholder={trade.currency === "USD" ? "예: 1380.5" : "원화 거래는 입력하지 않음"}
+            placeholder={trade.currency === "USD" ? "예: 1,380.5" : "원화 거래는 입력하지 않음"}
             required={trade.currency === "USD"}
             step="0.01"
-            type="number"
             value={trade.exchangeRate}
-            onChange={(event) => update({ exchangeRate: event.target.value })}
+            onValueChange={(value) => update({ exchangeRate: value })}
           />
         </Field>
         <Field htmlFor={`profit-${trade.clientId}`} label="수익률 (%)">
@@ -400,27 +401,25 @@ function TradeEditor({
           />
         </Field>
         <Field htmlFor={`fee-${trade.clientId}`} label="수수료 (₩)">
-          <input
+          <FormattedNumberInput
             id={`fee-${trade.clientId}`}
             min="0"
-            placeholder="예: 1200"
+            placeholder="예: 1,200"
             required
             step="1"
-            type="number"
             value={trade.feeKrw}
-            onChange={(event) => update({ feeKrw: event.target.value })}
+            onValueChange={(value) => update({ feeKrw: value })}
           />
         </Field>
         <Field htmlFor={`tax-${trade.clientId}`} label="세금 (₩)">
-          <input
+          <FormattedNumberInput
             id={`tax-${trade.clientId}`}
             min="0"
             placeholder="예: 0"
             required
             step="1"
-            type="number"
             value={trade.taxKrw}
-            onChange={(event) => update({ taxKrw: event.target.value })}
+            onValueChange={(value) => update({ taxKrw: value })}
           />
         </Field>
         <Field htmlFor={`ordered-at-${trade.clientId}`} label="주문 일시" wide>

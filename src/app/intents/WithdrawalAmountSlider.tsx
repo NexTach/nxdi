@@ -29,7 +29,7 @@ export function WithdrawalAmountSlider({
     <div className="withdrawal-slider">
       <input type="hidden" name="amountKrw" value={value} />
       <div className="withdrawal-slider-value">
-        <span>출금 의향 금액</span>
+        <span>출금 의향 금액 (원화)</span>
         <output htmlFor="withdrawAmount">{formatKrw(value)}</output>
       </div>
       <input

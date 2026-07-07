@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LogOut, ShieldAlert } from "lucide-react";
 import { redirect } from "next/navigation";
+import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
   AppShell,
@@ -129,17 +130,15 @@ export default async function IntentsPage({ searchParams }: IntentPageProps) {
           </h2>
           <p className="lede">의향 금액은 원화 기준으로 자유롭게 입력할 수 있으며 최소 1만원부터 제출됩니다.</p>
           <Form action="/api/intents/invest" method="post">
-            <Field htmlFor="investAmount" label="의향 금액">
-              <input
+            <Field htmlFor="investAmount" label="의향 금액 (원화)">
+              <FormattedNumberInput
                 id="investAmount"
-                inputMode="numeric"
                 min="10000"
                 name="amountKrw"
-                placeholder="예: 100000"
+                placeholder="예: 100,000"
                 required
-                type="number"
               />
-              <p className="field-help">1만원 이상, 원 단위로 입력</p>
+              <p className="field-help">원화 기준 1만원 이상, 입력 중 쉼표가 자동으로 표시됩니다.</p>
             </Field>
             <Field htmlFor="depositorName" label="입금자명">
               <input id="depositorName" name="depositorName" defaultValue={user.name} required />

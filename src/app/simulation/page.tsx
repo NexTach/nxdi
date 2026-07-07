@@ -1,6 +1,7 @@
 import { LogOut, RefreshCw } from "lucide-react";
 import { redirect } from "next/navigation";
 import { DividendForecastView } from "@/app/components/dividend-forecast-view";
+import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import {
   AppShell,
   ButtonLink,
@@ -71,8 +72,17 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
       <Grid columns={2}>
         <CtaPanel>
           <Form method="get">
-            <Field htmlFor="amountKrw" label="가정 투자금">
-              <input id="amountKrw" name="amountKrw" type="number" min="10000" step="10000" defaultValue={amount} />
+            <Field htmlFor="amountKrw" label="가정 투자금 (원화)">
+              <FormattedNumberInput
+                defaultValue={amount}
+                id="amountKrw"
+                min="10000"
+                name="amountKrw"
+                placeholder="예: 100,000"
+                required
+                step="10000"
+              />
+              <p className="field-help">원화 기준으로 입력하면 쉼표가 자동으로 표시됩니다.</p>
             </Field>
             <button type="submit">
               <RefreshCw size={17} />

@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import { ComputedValue, Field, Form } from "@/app/components/tds";
 import { currencySymbol, formatCurrency } from "@/lib/format";
 import { stockPrimaryLabel, stockSecondaryLabel } from "@/lib/stock-display";
@@ -438,43 +439,39 @@ export function AdminHoldingForm({
               />
             </Field>
             <Field htmlFor={`price-${symbol ?? "new"}`} label={`현재가 (${currencySymbol(form.currency)})`}>
-              <input
+              <FormattedNumberInput
+                allowDecimal
                 id={`price-${symbol ?? "new"}`}
                 name="lastPrice"
-                type="number"
                 step="0.000001"
                 min="0"
                 value={form.lastPrice}
-                onChange={(event) => setForm((current) => ({ ...current, lastPrice: event.target.value }))}
+                onValueChange={(value) => setForm((current) => ({ ...current, lastPrice: value }))}
                 required
               />
             </Field>
             <Field htmlFor={`avg-${symbol ?? "new"}`} label={`평단 (${currencySymbol(form.currency)})`}>
-              <input
+              <FormattedNumberInput
+                allowDecimal
                 id={`avg-${symbol ?? "new"}`}
                 name="averagePurchasePrice"
-                type="number"
                 step="0.000001"
                 min="0"
                 value={form.averagePurchasePrice}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, averagePurchasePrice: event.target.value }))
-                }
+                onValueChange={(value) => setForm((current) => ({ ...current, averagePurchasePrice: value }))}
               />
             </Field>
             <Field htmlFor={`purchase-fx-${symbol ?? "new"}`} label="매입환율 (₩)">
-              <input
+              <FormattedNumberInput
+                allowDecimal
                 id={`purchase-fx-${symbol ?? "new"}`}
                 name="purchaseExchangeRate"
-                type="number"
                 step="0.01"
                 min="500"
                 max="3000"
                 value={form.purchaseExchangeRate}
                 disabled={form.currency !== "USD"}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, purchaseExchangeRate: event.target.value }))
-                }
+                onValueChange={(value) => setForm((current) => ({ ...current, purchaseExchangeRate: value }))}
               />
             </Field>
           </div>
