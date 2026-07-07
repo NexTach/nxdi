@@ -1,6 +1,7 @@
 import { LockKeyhole, Megaphone } from "lucide-react";
 import { AdminHoldingForm } from "./AdminHoldingForm";
 import { DisclosureForm } from "./DisclosureForm";
+import { DividendAllocationCalculator } from "./DividendAllocationCalculator";
 import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
   AppShell,
@@ -172,9 +173,8 @@ export default async function AdminPage({ searchParams }: AdminProps) {
     readDividendRecords(),
     readDisclosures()
   ]);
-  const acceptedInvestment = store.investmentIntents
-    .filter((intent) => intent.status === "ACCEPTED")
-    .reduce((sum, intent) => sum + intent.amountKrw, 0);
+  const acceptedInvestmentIntents = store.investmentIntents.filter((intent) => intent.status === "ACCEPTED");
+  const acceptedInvestment = acceptedInvestmentIntents.reduce((sum, intent) => sum + intent.amountKrw, 0);
   const pendingInvestment = store.investmentIntents
     .filter((intent) => intent.status === "PENDING")
     .reduce((sum, intent) => sum + intent.amountKrw, 0);
@@ -200,10 +200,11 @@ export default async function AdminPage({ searchParams }: AdminProps) {
         backLink={{ href: "/" }}
       />
 
-      <Grid columns={3} className="mt-16">
+      <Grid columns={4} className="mt-16">
         <Metric label="수락된 투자 의향" value={formatKrw(acceptedInvestment)} />
         <Metric label="대기 중 투자 의향" value={formatKrw(pendingInvestment)} />
         <Metric label="대기 중 출금 의향" value={formatKrw(pendingWithdrawal)} />
+        <Metric label="포트폴리오 평가금액" value={formatKrw(portfolio.totalMarketValueKrw)} />
       </Grid>
 
       <SectionHeader title="공시" description="사용자에게 노출되는 공시와 첨부 거래 이력을 관리합니다." />
@@ -490,6 +491,25 @@ export default async function AdminPage({ searchParams }: AdminProps) {
             </tbody>
           </table>
         </TableSurface>
+      </Panel>
+
+      <SectionHeader
+        title="배당 배분 계산기"
+        description="수락된 투자 의향서 하나를 선택하고, 전체 포트폴리오 평가금액 기준 비중으로 실 배당금을 계산합니다."
+      />
+
+      <Panel>
+        <h2>실 배당금 지급 계산</h2>
+        <DividendAllocationCalculator
+          intents={acceptedInvestmentIntents.map((intent) => ({
+            id: intent.id,
+            userName: intent.userName,
+            userEmail: intent.userEmail,
+            amountKrw: intent.amountKrw,
+            createdAt: intent.createdAt
+          }))}
+          totalMarketValueKrw={portfolio.totalMarketValueKrw}
+        />
       </Panel>
     </AppShell>
   );

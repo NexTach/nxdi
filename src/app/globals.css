@@ -1187,6 +1187,96 @@ button.full,
   padding: 0 var(--tds-space-3);
 }
 
+.dividend-allocation-calculator {
+  display: grid;
+  gap: var(--tds-space-3);
+}
+
+.dividend-allocation-controls {
+  align-items: end;
+  display: grid;
+  gap: var(--tds-space-3);
+  grid-template-columns: minmax(280px, 1fr) minmax(220px, 320px);
+}
+
+.dividend-allocation-controls select {
+  background: var(--surface-muted);
+  border: 1px solid transparent;
+  border-radius: var(--tds-radius-md);
+  color: var(--text);
+  min-height: var(--tds-control-md);
+  padding: 9px var(--tds-space-3);
+  width: 100%;
+}
+
+.dividend-allocation-controls select:focus {
+  background: #fff;
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.dividend-allocation-summary {
+  display: grid;
+  gap: var(--tds-space-2);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dividend-allocation-summary div {
+  background: var(--surface-muted);
+  border-radius: var(--tds-radius-md);
+  display: grid;
+  gap: 3px;
+  min-height: var(--tds-control-lg);
+  padding: var(--tds-space-2) var(--tds-space-3);
+}
+
+.dividend-allocation-summary span {
+  color: var(--muted);
+  font-size: var(--tds-text-xs);
+  font-weight: 700;
+}
+
+.dividend-allocation-summary strong {
+  font-size: var(--tds-text-md);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.dividend-allocation-selected {
+  background: var(--surface-muted);
+  border-radius: var(--tds-radius-md);
+  display: grid;
+  gap: var(--tds-space-2);
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 0.8fr) minmax(220px, 1fr);
+  padding: var(--tds-space-3);
+}
+
+.dividend-allocation-selected div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.dividend-allocation-selected span {
+  color: var(--muted);
+  font-size: var(--tds-text-xs);
+  font-weight: 700;
+}
+
+.dividend-allocation-selected strong {
+  font-size: var(--tds-text-md);
+  overflow-wrap: anywhere;
+}
+
+.dividend-allocation-empty {
+  background: var(--surface-muted);
+  border-radius: var(--tds-radius-md);
+  color: var(--muted);
+  font-size: var(--tds-text-sm);
+  margin: 0;
+  padding: var(--tds-space-4);
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -2188,7 +2278,7 @@ button.tds-toast-close:hover {
 }
 
 .dividend-calendar-items {
-  align-content: start;
+  align-content: flex-start;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -2303,6 +2393,10 @@ button.tds-toast-close:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .dividend-allocation-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .home-dashboard-grid {
     grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
   }
@@ -2344,6 +2438,11 @@ button.tds-toast-close:hover {
     grid-template-columns: 1fr;
   }
 
+  .dividend-allocation-controls,
+  .dividend-allocation-selected {
+    grid-template-columns: 1fr;
+  }
+
   .section-title {
     align-items: flex-start;
     flex-direction: column;
@@ -2365,6 +2464,10 @@ button.tds-toast-close:hover {
 
 @media (max-width: 760px) {
   .grid.four {
+    grid-template-columns: 1fr;
+  }
+
+  .dividend-allocation-summary {
     grid-template-columns: 1fr;
   }
 
