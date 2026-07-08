@@ -1,10 +1,9 @@
 import { promises as fs } from "fs";
 import path from "path";
 import type { Metadata } from "next";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { AuthNavActions } from "@/app/components/auth-actions";
 import { IntentLink } from "@/app/components/intent-link";
+import { PolicyMarkdown } from "@/app/components/policy-markdown";
 import {
   AppShell,
   Navigation,
@@ -47,7 +46,7 @@ export default async function ProductPage() {
 
       <Panel className="markdown-panel">
         <article className="markdown-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+          <PolicyMarkdown markdown={markdown} />
         </article>
       </Panel>
 

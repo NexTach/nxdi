@@ -601,6 +601,127 @@ button.full,
   padding: var(--tds-space-1) 0 var(--tds-space-1) var(--tds-space-3);
 }
 
+.policy-formula-block {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--tds-radius-md);
+  display: grid;
+  gap: 0;
+  margin: var(--tds-space-2) 0;
+  overflow: hidden;
+}
+
+.policy-formula-block header {
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+  padding: var(--tds-space-4);
+}
+
+.policy-formula-block header h3 {
+  font-size: var(--tds-title-sm);
+  margin: 0;
+}
+
+.policy-formula-block header p {
+  color: var(--muted);
+  font-size: var(--tds-text-sm);
+  margin: 0;
+}
+
+.policy-formula-eyebrow {
+  color: var(--accent-dark);
+  font-size: var(--tds-text-xs);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.policy-formula-sections {
+  display: grid;
+}
+
+.policy-formula-section {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: var(--tds-space-3);
+  padding: var(--tds-space-4);
+}
+
+.policy-formula-section:first-child {
+  border-top: 0;
+}
+
+.policy-formula-section-head {
+  align-items: center;
+  display: flex;
+  gap: var(--tds-space-2);
+}
+
+.policy-formula-section-head span {
+  align-items: center;
+  background: var(--accent-soft);
+  border-radius: var(--tds-radius-sm);
+  color: var(--accent-dark);
+  display: inline-flex;
+  font-size: var(--tds-text-xs);
+  font-weight: 800;
+  height: 24px;
+  justify-content: center;
+  min-width: 32px;
+}
+
+.policy-formula-section-head h4 {
+  color: var(--text);
+  font-size: var(--tds-text-md);
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.policy-formula-equations {
+  display: grid;
+  gap: var(--tds-space-2);
+}
+
+.policy-formula-equation {
+  align-items: center;
+  background: var(--surface-muted);
+  border: 1px solid transparent;
+  border-radius: var(--tds-radius-sm);
+  display: grid;
+  gap: var(--tds-space-2);
+  grid-template-columns: minmax(128px, 0.42fr) auto minmax(0, 1fr);
+  min-height: var(--tds-control-lg);
+  padding: 10px var(--tds-space-3);
+}
+
+.policy-formula-left,
+.policy-formula-right {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.policy-formula-left {
+  color: var(--accent-dark);
+  font-size: var(--tds-text-sm);
+  font-weight: 800;
+}
+
+.policy-formula-equals {
+  color: var(--weak);
+  font-size: var(--tds-text-md);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.policy-formula-right {
+  color: var(--text);
+  font-size: var(--tds-text-sm);
+  font-weight: 700;
+  line-height: 1.55;
+}
+
 .markdown-body table {
   background: var(--surface-muted);
   border-radius: var(--tds-radius-md);
@@ -2620,6 +2741,15 @@ button.tds-toast-close:hover {
 
   .dividend-allocation-summary {
     grid-template-columns: 1fr;
+  }
+
+  .policy-formula-equation {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .policy-formula-equals {
+    display: none;
   }
 
   .dividend-calendar {

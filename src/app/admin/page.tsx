@@ -436,7 +436,7 @@ export default async function AdminPage() {
 
       <SectionHeader
         title="배당 배분 계산기"
-        description="수락된 투자 의향서 하나를 선택하고, 전체 포트폴리오 평가금액 기준 비중으로 실 배당금을 계산합니다."
+        description="월 전체 실 배당금에서 투자자 배분 대상 금액을 산정한 뒤, 수락 투자 원금 비율로 지급액을 계산합니다."
       />
 
       <Panel>
@@ -449,6 +449,7 @@ export default async function AdminPage() {
             amountKrw: intent.amountKrw,
             createdAt: intent.createdAt
           }))}
+          investorPrincipalKrw={acceptedInvestment}
           totalMarketValueKrw={portfolio.totalMarketValueKrw}
         />
       </Panel>

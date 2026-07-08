@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import { Field, MutedText } from "@/app/components/tds";
+import { calculateDividendAllocation } from "@/lib/dividend-allocation";
 import { formatDateTime, formatKrw, formatNumber } from "@/lib/format";
 
 type DividendAllocationIntent = {
@@ -15,6 +16,7 @@ type DividendAllocationIntent = {
 
 type DividendAllocationCalculatorProps = {
   intents: DividendAllocationIntent[];
+  investorPrincipalKrw: number;
   totalMarketValueKrw: number;
 };
 
@@ -30,6 +32,7 @@ function formatPercent(value: number) {
 
 export function DividendAllocationCalculator({
   intents,
+  investorPrincipalKrw,
   totalMarketValueKrw
 }: DividendAllocationCalculatorProps) {
   const [actualDividend, setActualDividend] = useState("");
@@ -40,10 +43,13 @@ export function DividendAllocationCalculator({
     () => intents.find((intent) => intent.id === selectedIntentId) ?? intents[0],
     [intents, selectedIntentId]
   );
-  const selectedPortfolioWeight =
-    selectedIntent && totalMarketValueKrw > 0 ? selectedIntent.amountKrw / totalMarketValueKrw : 0;
-  const allocationKrw = actualDividendKrw * selectedPortfolioWeight;
-  const canCalculate = totalMarketValueKrw > 0 && Boolean(selectedIntent);
+  const allocation = calculateDividendAllocation({
+    actualDividendKrw,
+    selectedInvestmentKrw: selectedIntent?.amountKrw ?? 0,
+    investorPrincipalKrw,
+    totalMarketValueKrw
+  });
+  const canCalculate = investorPrincipalKrw > 0 && Boolean(selectedIntent);
 
   return (
     <div className="dividend-allocation-calculator">
@@ -63,12 +69,12 @@ export function DividendAllocationCalculator({
             ))}
           </select>
         </Field>
-        <Field htmlFor="actual-dividend-krw" label="실 배당 금액">
+        <Field htmlFor="actual-dividend-krw" label="월 전체 실 배당금">
           <FormattedNumberInput
             id="actual-dividend-krw"
             min="0"
             onValueChange={setActualDividend}
-            placeholder="원화 기준 배당금"
+            placeholder="원화 기준 총 배당금"
             value={actualDividend}
           />
         </Field>
@@ -76,27 +82,43 @@ export function DividendAllocationCalculator({
 
       <div className="dividend-allocation-summary" aria-label="배당 배분 요약">
         <div>
-          <span>포트폴리오 평가금액</span>
-          <strong>{formatKrw(totalMarketValueKrw)}</strong>
+          <span>투자자 원금 합계</span>
+          <strong>{formatKrw(allocation.investorPrincipalKrw)}</strong>
         </div>
         <div>
-          <span>선택 의향 금액</span>
-          <strong>{selectedIntent ? formatKrw(selectedIntent.amountKrw) : "-"}</strong>
+          <span>회사 기준금액</span>
+          <strong>{formatKrw(allocation.companyPrincipalKrw)}</strong>
         </div>
         <div>
-          <span>평가금액 기준 비중</span>
-          <strong>{formatPercent(selectedPortfolioWeight)}</strong>
+          <span>투자자 기본 몫</span>
+          <strong>{formatKrw(allocation.investorBaseDividendKrw)}</strong>
+        </div>
+        <div>
+          <span>회사 이전액</span>
+          <strong>{formatKrw(allocation.companyTransferredDividendKrw)}</strong>
+        </div>
+        <div>
+          <span>투자자 배분 대상</span>
+          <strong>{formatKrw(allocation.investorDistributionPoolKrw)}</strong>
+        </div>
+        <div>
+          <span>회사 보유 배당</span>
+          <strong>{formatKrw(allocation.companyRetainedDividendKrw)}</strong>
+        </div>
+        <div>
+          <span>선택 투자자 비율</span>
+          <strong>{formatPercent(allocation.selectedInvestorWeight)}</strong>
         </div>
         <div>
           <span>지급액</span>
-          <strong>{formatKrw(allocationKrw)}</strong>
+          <strong>{formatKrw(allocation.allocationKrw)}</strong>
         </div>
       </div>
 
       {!canCalculate ? (
         <p className="dividend-allocation-empty">
-          {totalMarketValueKrw <= 0
-            ? "포트폴리오 평가금액이 있어야 배당 배분액을 계산할 수 있습니다."
+          {investorPrincipalKrw <= 0
+            ? "수락된 투자 원금이 있어야 배당 배분액을 계산할 수 있습니다."
             : "수락된 투자 의향서가 없습니다."}
         </p>
       ) : (
@@ -113,8 +135,13 @@ export function DividendAllocationCalculator({
           <div>
             <span>계산식</span>
             <strong>
-              {formatKrw(actualDividendKrw)} × {formatPercent(selectedPortfolioWeight)}
+              {formatKrw(allocation.investorDistributionPoolKrw)} ×{" "}
+              {formatPercent(allocation.selectedInvestorWeight)}
             </strong>
+            <MutedText>
+              상한 {formatPercent(allocation.monthlyInvestorDividendCapRate)} · 이전율{" "}
+              {formatPercent(allocation.companyDividendTransferRate)}
+            </MutedText>
           </div>
         </div>
       )}

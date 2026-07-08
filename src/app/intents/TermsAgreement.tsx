@@ -2,8 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { PolicyMarkdown } from "@/app/components/policy-markdown";
 
 export function TermsAgreement({
   markdown,
@@ -77,7 +76,7 @@ export function TermsAgreement({
               </button>
             </header>
             <div className="terms-modal-content markdown-body">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+              <PolicyMarkdown markdown={markdown} />
             </div>
           </section>
         </div>
