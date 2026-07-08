@@ -2129,6 +2129,11 @@ button.terms-modal-close {
   line-height: 1;
 }
 
+.trade-chip > span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .trade-chip strong {
   color: var(--text);
   font-weight: 800;
