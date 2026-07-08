@@ -590,6 +590,7 @@ export function AdminHoldingForm({
                     name="tradeQuantity"
                     step="0.000001"
                     min="0"
+                    placeholder="예: 3"
                     value={tradeForm.quantity}
                     onValueChange={(value) => setTradeForm((current) => ({ ...current, quantity: value }))}
                   />
@@ -601,6 +602,7 @@ export function AdminHoldingForm({
                     name="orderPrice"
                     step="0.000001"
                     min="0"
+                    placeholder={currency === "USD" ? "예: 78.5" : "예: 12,000"}
                     value={tradeForm.orderPrice}
                     onValueChange={(value) => setTradeForm((current) => ({ ...current, orderPrice: value }))}
                   />
@@ -613,6 +615,7 @@ export function AdminHoldingForm({
                     step="0.01"
                     min="500"
                     max="3000"
+                    placeholder={currency === "USD" ? "예: 1,380.5" : "원화 거래는 입력하지 않음"}
                     value={tradeForm.exchangeRate}
                     disabled={currency !== "USD"}
                     onValueChange={(value) => setTradeForm((current) => ({ ...current, exchangeRate: value }))}
