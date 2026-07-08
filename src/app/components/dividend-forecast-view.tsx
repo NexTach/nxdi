@@ -12,8 +12,13 @@ type DividendForecastViewMode = "simulation" | "holding";
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
 
 export function forecastLinePaymentAmount(line: DividendForecastLine) {
+  if (typeof line.annualDividendKrw !== "number") return undefined;
   if (line.expectedPaymentMonths.length === 0) return line.annualDividendKrw;
   return line.annualDividendKrw / line.expectedPaymentMonths.length;
+}
+
+function formatOptionalKrw(value?: number) {
+  return typeof value === "number" && Number.isFinite(value) ? formatKrw(value) : "-";
 }
 
 export function DividendForecastView({
@@ -31,13 +36,14 @@ export function DividendForecastView({
         return {
           month,
           items,
-          amountKrw: items.reduce((sum, line) => sum + forecastLinePaymentAmount(line), 0)
+          amountKrw: items.reduce((sum, line) => sum + (forecastLinePaymentAmount(line) ?? 0), 0),
+          hasMissingAmount: items.some((line) => typeof forecastLinePaymentAmount(line) !== "number")
         };
       }),
     [lines]
   );
   const unscheduledLines = lines.filter(
-    (line) => line.annualDividendKrw > 0 && line.expectedPaymentMonths.length === 0
+    (line) => typeof line.annualDividendKrw === "number" && line.annualDividendKrw > 0 && line.expectedPaymentMonths.length === 0
   );
   const hasMonthlyRows = monthlyRows.some((row) => row.items.length > 0);
 
@@ -74,7 +80,7 @@ export function DividendForecastView({
             >
               <header>
                 <span>{row.month}월</span>
-                {row.items.length > 0 ? <strong>{formatKrw(row.amountKrw)}</strong> : <em>예정 없음</em>}
+                {row.items.length > 0 ? <strong>{row.hasMissingAmount ? "-" : formatKrw(row.amountKrw)}</strong> : <em>예정 없음</em>}
               </header>
               <div className="dividend-calendar-items">
                 {row.items.length > 0 ? (
@@ -99,7 +105,7 @@ export function DividendForecastView({
             <article className="dividend-calendar-unscheduled" role="listitem">
               <header>
                 <span>지급월 없음</span>
-                <strong>{formatKrw(unscheduledLines.reduce((sum, line) => sum + line.annualDividendKrw, 0))}</strong>
+                <strong>{formatKrw(unscheduledLines.reduce((sum, line) => sum + (line.annualDividendKrw ?? 0), 0))}</strong>
               </header>
               <div className="dividend-calendar-items">
                 {unscheduledLines.slice(0, 6).map((line) => (
@@ -137,12 +143,13 @@ export function DividendForecastView({
                 description={`${secondaryLabel ? `${secondaryLabel} · ` : ""}${quantityText}`}
                 value={
                   <>
-                    {formatKrw(primaryAmount)}
+                    {formatOptionalKrw(primaryAmount)}
                     <RowMeta>
-                      {amountLabel} · 연 {formatKrw(line.annualDividendKrw)} ·{" "}
+                      {amountLabel} · 연 {formatOptionalKrw(line.annualDividendKrw)} ·{" "}
                       {line.expectedPaymentMonths.length > 0
                         ? line.expectedPaymentMonths.map((month) => `${month}월`).join(", ")
                         : "지급월 없음"}
+                      {line.dividendDataMissing ? " · 배당 데이터 없음" : ""}
                       {mode === "holding" && typeof line.lastDividendKrw === "number"
                         ? ` · 최근 ${formatKrw(line.lastDividendKrw)}`
                         : ""}

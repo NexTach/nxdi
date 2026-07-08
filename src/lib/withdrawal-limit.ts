@@ -1,21 +1,11 @@
 import type { AppStore, PortfolioOverview } from "./types";
+import { portfolioCostBasisKrw } from "./portfolio-math";
 
 export type WithdrawalLimit = {
   principalKrw: number;
   drawdownRate: number;
   maxAmountKrw: number;
 };
-
-function portfolioCostBasisKrw(portfolio: PortfolioOverview) {
-  return portfolio.holdings.reduce((sum, holding) => {
-    if (typeof holding.costBasisKrw === "number") return sum + holding.costBasisKrw;
-    if (!holding.averagePurchasePrice || holding.averagePurchasePrice <= 0) return sum;
-
-    const purchaseExchangeRate = holding.purchaseExchangeRate ?? portfolio.exchangeRate;
-    const nativeCost = holding.averagePurchasePrice * holding.quantity;
-    return sum + (holding.currency === "USD" ? nativeCost * purchaseExchangeRate : nativeCost);
-  }, 0);
-}
 
 export function acceptedInvestmentPrincipal(store: AppStore, userId: string) {
   return store.investmentIntents
@@ -24,8 +14,8 @@ export function acceptedInvestmentPrincipal(store: AppStore, userId: string) {
 }
 
 export function portfolioDrawdownRate(portfolio: PortfolioOverview) {
-  const costBasisKrw = portfolioCostBasisKrw(portfolio);
-  if (costBasisKrw <= 0) return 0;
+  const costBasisKrw = portfolioCostBasisKrw(portfolio.holdings);
+  if (!costBasisKrw || costBasisKrw <= 0) return 0;
 
   return Math.min(0, (portfolio.totalMarketValueKrw - costBasisKrw) / costBasisKrw);
 }

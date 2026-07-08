@@ -24,10 +24,10 @@ import {
 } from "@/app/components/tds";
 import {
   changeRateFromCandles,
-  changeRateFromSnapshots,
   dividendYieldCandlesFromSnapshots,
   pointsFromCandles,
   pointsFromSnapshots,
+  portfolioChangeRateFromMarketValue,
   returnCandlesFromSnapshots,
   samplePoints
 } from "@/lib/chart-metrics";
@@ -46,6 +46,10 @@ const HOME_HOLDINGS_PAGE_SIZE = 8;
 function formatPercent(value?: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "-";
   return `${formatNumber(value * 100, 2)}%`;
+}
+
+function formatOptionalKrw(value?: number) {
+  return typeof value === "number" && Number.isFinite(value) ? formatKrw(value) : "-";
 }
 
 function rateTone(value?: number) {
@@ -68,14 +72,27 @@ export default async function Home() {
     summarizePortfolioDividend(portfolio),
     readDisclosures({ take: 3 })
   ]);
-  const dailyChartEntries = await Promise.all(
-    portfolio.holdings.map(async (holding) => [
-      holding.symbol,
-      await fetchMarketCandles(holding.symbol, { range: "1y", interval: "1d", limit: 252 }).catch(() => null)
-    ] as const)
-  );
+  const [dailyChartEntries, dailyChangeChartEntries] = await Promise.all([
+    Promise.all(
+      portfolio.holdings.map(async (holding) => [
+        holding.symbol,
+        await fetchMarketCandles(holding.symbol, { range: "1y", interval: "1d", limit: 252 }).catch(() => null)
+      ] as const)
+    ),
+    Promise.all(
+      portfolio.holdings.map(async (holding) => [
+        holding.symbol,
+        await fetchMarketCandles(holding.symbol, { range: "1d", interval: "1d", limit: 1 }).catch(() => null)
+      ] as const)
+    )
+  ]);
   const dailyCharts = new Map(dailyChartEntries);
-  const portfolioDailyChangeRate = changeRateFromSnapshots(portfolio.dailySnapshots);
+  const dailyChangeCharts = new Map(dailyChangeChartEntries);
+  const portfolioDailyChangeRate = portfolioChangeRateFromMarketValue({
+    holdings: portfolio.holdings,
+    charts: dailyChangeCharts,
+    exchangeRate: portfolio.exchangeRate
+  });
   const portfolioDailyPoints = pointsFromSnapshots(portfolio.dailySnapshots);
   const holdingReturnPoints = pointsFromCandles(returnCandlesFromSnapshots(portfolio.dailySnapshots));
   const yieldPoints = pointsFromCandles(dividendYieldCandlesFromSnapshots(portfolio.dailySnapshots));
@@ -127,7 +144,7 @@ export default async function Home() {
               <TextLink className="chart-link" href="/metrics/daily-change">
                 <SparkLineChart
                   interactive={false}
-                  label="포트폴리오 1년 등락 추세"
+                  label="포트폴리오 1년 평가금액 추세"
                   points={samplePoints(portfolioDailyPoints)}
                   trendValue={portfolioDailyChangeRate}
                   valueFormat="krw"
@@ -254,8 +271,8 @@ export default async function Home() {
             <SectionHeader title="예정 배당" description="현재 펀드 보유 수량 기준으로 예정 배당을 월별 또는 종목별로 확인합니다." />
 
             <Grid columns={3} className="scheduled-dividend-summary">
-              <Metric label="연 예정 배당" value={formatKrw(scheduledDividend.annualDividendKrw)} />
-              <Metric label="월평균 예정 배당" value={formatKrw(scheduledDividend.monthlyAverageKrw)} />
+              <Metric label="연 예정 배당" value={formatOptionalKrw(scheduledDividend.annualDividendKrw)} />
+              <Metric label="월평균 예정 배당" value={formatOptionalKrw(scheduledDividend.monthlyAverageKrw)} />
               <Metric label="현재 배당수익률" value={formatPercent(portfolioDividend.dividendYield)} />
             </Grid>
 

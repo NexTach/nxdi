@@ -8,6 +8,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "tsx --test",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "db:push": "prisma db push",

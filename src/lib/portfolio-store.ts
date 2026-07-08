@@ -1,6 +1,7 @@
 import type { Holding, ManualPortfolioStore, MarketCode, PortfolioDailySnapshot, PortfolioOverview } from "./types";
 import { summarizePortfolioDividend } from "./dividends";
 import { fetchUsdKrwExchangeRate } from "./exchange-rate";
+import { holdingCostBasisKrw } from "./portfolio-math";
 import { prisma } from "./prisma";
 
 const MIN_REMAINING_QUANTITY = 0.0000001;
@@ -18,18 +19,12 @@ function normalizeStore(store: ManualPortfolioStore): ManualPortfolioStore {
         : undefined;
     const purchaseExchangeRate =
       holding.currency === "USD"
-        ? Number(holding.purchaseExchangeRate) || exchangeRate
+        ? Number(holding.purchaseExchangeRate) || undefined
         : undefined;
-    const costBasisNative =
-      holding.averagePurchasePrice && holding.averagePurchasePrice > 0
-        ? holding.averagePurchasePrice * holding.quantity
-        : undefined;
-    const costBasisKrw =
-      costBasisNative === undefined
-        ? undefined
-        : holding.currency === "USD"
-          ? costBasisNative * (purchaseExchangeRate ?? exchangeRate)
-          : costBasisNative;
+    const costBasisKrw = holdingCostBasisKrw({
+      ...holding,
+      purchaseExchangeRate
+    });
     const marketValueKrw = holding.currency === "USD" ? marketValue * exchangeRate : marketValue;
     const profitLossKrw =
       costBasisKrw !== undefined ? marketValueKrw - costBasisKrw : undefined;
@@ -126,8 +121,8 @@ async function upsertPortfolioDailySnapshot({
   snapshotDate: string;
   totalMarketValueKrw: number;
   exchangeRate: number;
-  costBasisKrw: number;
-  annualDividendKrw: number;
+  costBasisKrw?: number;
+  annualDividendKrw?: number;
 }) {
   await prisma.portfolioDailySnapshot.upsert({
     where: { snapshotDate },
@@ -135,14 +130,14 @@ async function upsertPortfolioDailySnapshot({
       snapshotDate,
       totalMarketValueKrw,
       exchangeRate,
-      costBasisKrw,
-      annualDividendKrw
+      costBasisKrw: costBasisKrw ?? null,
+      annualDividendKrw: annualDividendKrw ?? null
     },
     update: {
       totalMarketValueKrw,
       exchangeRate,
-      costBasisKrw,
-      annualDividendKrw
+      costBasisKrw: costBasisKrw ?? null,
+      annualDividendKrw: annualDividendKrw ?? null
     }
   });
 }
@@ -340,10 +335,11 @@ export async function applyManualHoldingTrade(input: {
     return { status: "updated" as const };
   }
 
-  const currentAveragePurchasePrice =
-    holding.averagePurchasePrice && holding.averagePurchasePrice > 0
-      ? holding.averagePurchasePrice
-      : holding.lastPrice;
+  if (!holding.averagePurchasePrice || holding.averagePurchasePrice <= 0) {
+    return { status: "missing_cost_basis" as const };
+  }
+
+  const currentAveragePurchasePrice = holding.averagePurchasePrice;
   const currentNativeCost = currentAveragePurchasePrice * holding.quantity;
   const tradeNativeCost = input.orderPrice * input.quantity;
   const nextQuantity = holding.quantity + input.quantity;
@@ -351,13 +347,13 @@ export async function applyManualHoldingTrade(input: {
 
   let nextPurchaseExchangeRate = holding.purchaseExchangeRate ?? undefined;
   if (holding.currency === "USD") {
-    const tradeExchangeRate = input.exchangeRate ?? holding.purchaseExchangeRate ?? undefined;
-    if (tradeExchangeRate) {
-      const currentExchangeRate = holding.purchaseExchangeRate ?? tradeExchangeRate;
-      nextPurchaseExchangeRate =
-        (currentNativeCost * currentExchangeRate + tradeNativeCost * tradeExchangeRate) /
-        (currentNativeCost + tradeNativeCost);
-    }
+    const tradeExchangeRate = input.exchangeRate;
+    if (!tradeExchangeRate) return { status: "missing_exchange_rate" as const };
+    if (!holding.purchaseExchangeRate) return { status: "missing_exchange_rate" as const };
+
+    nextPurchaseExchangeRate =
+      (currentNativeCost * holding.purchaseExchangeRate + tradeNativeCost * tradeExchangeRate) /
+      (currentNativeCost + tradeNativeCost);
   }
 
   const profitLossRate =

@@ -16,7 +16,7 @@ export function changeRateFromCandles(candles: MarketCandle[]) {
 export function changeRateFromSnapshots(snapshots: PortfolioDailySnapshot[]) {
   const latest = snapshots.at(-1);
   const previous = snapshots.at(-2);
-  const previousClose = previous ? snapshotCloseTotalMarketValueKrw(previous) : undefined;
+  const previousClose = previous?.closeTotalMarketValueKrw;
   if (!latest || !previous || !previousClose || previousClose <= 0) return undefined;
   return (latest.totalMarketValueKrw - previousClose) / previousClose;
 }
@@ -41,20 +41,26 @@ export function portfolioChangeRateFromMarketValue({
 }) {
   let currentMarketValue = 0;
   let previousMarketValue = 0;
+  let coveredHoldingCount = 0;
+  let eligibleHoldingCount = 0;
 
   for (const holding of holdings) {
     if (holding.quantity <= 0 || holding.marketValueKrw <= 0) continue;
+    eligibleHoldingCount += 1;
 
     const previousClose = previousCloseFromChart(charts.get(holding.symbol));
-    if (previousClose === undefined) continue;
+    if (previousClose === undefined) return undefined;
 
     const multiplier = holding.quantity * (holding.currency === "USD" ? exchangeRate : 1);
     const previousHoldingValue = previousClose * multiplier;
-    if (previousHoldingValue <= 0) continue;
+    if (previousHoldingValue <= 0) return undefined;
 
     currentMarketValue += holding.marketValueKrw;
     previousMarketValue += previousHoldingValue;
+    coveredHoldingCount += 1;
   }
+
+  if (eligibleHoldingCount === 0 || coveredHoldingCount !== eligibleHoldingCount) return undefined;
 
   return previousMarketValue > 0 ? (currentMarketValue - previousMarketValue) / previousMarketValue : undefined;
 }
@@ -73,15 +79,16 @@ export function pointsFromCandles(candles: MarketCandle[]) {
 }
 
 export function pointsFromSnapshots(snapshots: PortfolioDailySnapshot[]) {
-  return snapshots.map((snapshot, index) => ({
-    date: snapshot.date,
-    value: snapshotEffectiveTotalMarketValueKrw(snapshot, index, snapshots)
-  }));
+  return snapshots.flatMap((snapshot, index) => {
+    const value = snapshotEffectiveTotalMarketValueKrw(snapshot, index, snapshots);
+    return typeof value === "number" ? [{ date: snapshot.date, value }] : [];
+  });
 }
 
 export function candlesFromSnapshots(snapshots: PortfolioDailySnapshot[]) {
-  return snapshots.map((snapshot, index) => {
+  return snapshots.flatMap((snapshot, index) => {
     const value = snapshotEffectiveTotalMarketValueKrw(snapshot, index, snapshots);
+    if (typeof value !== "number") return [];
     return {
       date: snapshot.date,
       open: value,
@@ -107,6 +114,7 @@ export function returnCandlesFromSnapshots(snapshots: PortfolioDailySnapshot[]) 
     const costBasisKrw = snapshotEffectiveCostBasisKrw(snapshot, index, snapshots);
     if (typeof costBasisKrw !== "number" || costBasisKrw <= 0) return [];
     const totalMarketValueKrw = snapshotEffectiveTotalMarketValueKrw(snapshot, index, snapshots);
+    if (typeof totalMarketValueKrw !== "number") return [];
     return [pointCandle(snapshot.date, (totalMarketValueKrw - costBasisKrw) / costBasisKrw)];
   });
 }
@@ -118,6 +126,7 @@ export function dividendYieldCandlesFromSnapshots(snapshots: PortfolioDailySnaps
     if (
       typeof annualDividendKrw !== "number" ||
       annualDividendKrw <= 0 ||
+      typeof totalMarketValueKrw !== "number" ||
       totalMarketValueKrw <= 0
     ) {
       return [];
@@ -130,17 +139,13 @@ function isLatestSnapshot(index: number, snapshots: PortfolioDailySnapshot[]) {
   return index === snapshots.length - 1;
 }
 
-function snapshotCloseTotalMarketValueKrw(snapshot: PortfolioDailySnapshot) {
-  return snapshot.closeTotalMarketValueKrw ?? snapshot.totalMarketValueKrw;
-}
-
 function snapshotEffectiveTotalMarketValueKrw(
   snapshot: PortfolioDailySnapshot,
   index: number,
   snapshots: PortfolioDailySnapshot[]
 ) {
   if (isLatestSnapshot(index, snapshots)) return snapshot.totalMarketValueKrw;
-  return snapshotCloseTotalMarketValueKrw(snapshot);
+  return snapshot.closeTotalMarketValueKrw;
 }
 
 function snapshotEffectiveCostBasisKrw(
@@ -149,7 +154,7 @@ function snapshotEffectiveCostBasisKrw(
   snapshots: PortfolioDailySnapshot[]
 ) {
   if (isLatestSnapshot(index, snapshots)) return snapshot.costBasisKrw;
-  return snapshot.closeCostBasisKrw ?? snapshot.costBasisKrw;
+  return snapshot.closeCostBasisKrw;
 }
 
 function snapshotEffectiveAnnualDividendKrw(
@@ -158,7 +163,7 @@ function snapshotEffectiveAnnualDividendKrw(
   snapshots: PortfolioDailySnapshot[]
 ) {
   if (isLatestSnapshot(index, snapshots)) return snapshot.annualDividendKrw;
-  return snapshot.closeAnnualDividendKrw ?? snapshot.annualDividendKrw;
+  return snapshot.closeAnnualDividendKrw;
 }
 
 export function aggregatePortfolioCandles({

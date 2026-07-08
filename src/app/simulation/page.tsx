@@ -33,6 +33,10 @@ function formatPercent(value?: number) {
   return `${formatNumber(value * 100, 2)}%`;
 }
 
+function formatOptionalKrw(value?: number) {
+  return typeof value === "number" && Number.isFinite(value) ? formatKrw(value) : "-";
+}
+
 export default async function SimulationPage({ searchParams }: SimulationPageProps) {
   const user = await getUserSession();
 
@@ -88,17 +92,21 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
           <ListRow
             title="연 예상 배당"
             description="현재 USD/KRW 기준이며 세금과 향후 환율 변동은 반영되지 않습니다."
-            value={formatKrw(forecast.annualDividendKrw)}
+            value={formatOptionalKrw(forecast.annualDividendKrw)}
           />
           <ListRow
             title="월평균 예상 배당"
             description="연 예상 배당을 12개월로 나눈 값"
-            value={formatKrw(forecast.monthlyAverageKrw)}
+            value={formatOptionalKrw(forecast.monthlyAverageKrw)}
           />
           <ListRow
             title="가정 배당수익률"
             description="가정 투자금 대비 연 예상 배당"
-            value={formatPercent(forecast.amountKrw > 0 ? forecast.annualDividendKrw / forecast.amountKrw : 0)}
+            value={formatPercent(
+              forecast.amountKrw > 0 && typeof forecast.annualDividendKrw === "number"
+                ? forecast.annualDividendKrw / forecast.amountKrw
+                : undefined
+            )}
           />
         </List>
       </Grid>

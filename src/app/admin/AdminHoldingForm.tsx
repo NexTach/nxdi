@@ -209,6 +209,15 @@ export function AdminHoldingForm({
     const tradeExchangeRate = positiveNumber(tradeForm.exchangeRate);
     let nextPurchaseExchangeRate = purchaseExchangeRate;
 
+    if (currency === "USD" && !tradeExchangeRate) {
+      return {
+        isValid: false,
+        quantity: nextQuantity,
+        averagePurchasePrice: nextAveragePurchasePrice,
+        purchaseExchangeRate
+      };
+    }
+
     if (currency === "USD" && tradeExchangeRate) {
       const currentExchangeRate = purchaseExchangeRate ?? tradeExchangeRate;
       nextPurchaseExchangeRate =
@@ -545,6 +554,7 @@ export function AdminHoldingForm({
                 min="0"
                 value={form.averagePurchasePrice}
                 onValueChange={(value) => setForm((current) => ({ ...current, averagePurchasePrice: value }))}
+                required
               />
             </Field>
             <Field htmlFor={`purchase-fx-${symbol ?? "new"}`} label="매입환율 (₩)">
@@ -558,6 +568,7 @@ export function AdminHoldingForm({
                 value={form.purchaseExchangeRate}
                 disabled={form.currency !== "USD"}
                 onValueChange={(value) => setForm((current) => ({ ...current, purchaseExchangeRate: value }))}
+                required={form.currency === "USD"}
               />
             </Field>
           </div>
@@ -619,6 +630,7 @@ export function AdminHoldingForm({
                     value={tradeForm.exchangeRate}
                     disabled={currency !== "USD"}
                     onValueChange={(value) => setTradeForm((current) => ({ ...current, exchangeRate: value }))}
+                    required={currency === "USD" && tradeForm.side === "BUY"}
                   />
                 </Field>
               </div>
@@ -648,7 +660,6 @@ export function AdminHoldingForm({
                   disabled={!tradePreview.isValid}
                   formAction="/api/admin/portfolio/trade"
                   formMethod="post"
-                  formNoValidate
                   type="submit"
                 >
                   거래 적용

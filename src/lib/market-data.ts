@@ -261,10 +261,13 @@ function normalizeSymbolForStorage(symbol: string, currency?: string) {
   return symbol.trim().toUpperCase();
 }
 
-function yahooLookupSymbol(symbol: string) {
+function yahooLookupSymbols(symbol: string) {
   const trimmed = symbol.trim().toUpperCase();
-  if (normalizeKrSecurityCode(trimmed)) return `${trimmed.replace(/\.(KS|KQ)$/, "")}.KS`;
-  return trimmed;
+  const krSecurityCode = normalizeKrSecurityCode(trimmed);
+  if (!krSecurityCode) return [trimmed];
+  if (trimmed.endsWith(".KQ")) return [`${krSecurityCode}.KQ`];
+  if (trimmed.endsWith(".KS")) return [`${krSecurityCode}.KS`];
+  return [`${krSecurityCode}.KS`, `${krSecurityCode}.KQ`];
 }
 
 function parseNumber(value?: string | number) {
@@ -346,6 +349,12 @@ async function readOpenDartCorpCodes(timeoutMs = 8000) {
 
 async function searchOpenDartSymbols(query: string, timeoutMs = 8000): Promise<SymbolSearchResult[]> {
   const normalized = query.trim().toUpperCase().replace(/\.(KS|KQ)$/, "");
+  const explicitMarketCountry: MarketCode | undefined =
+    query.trim().toUpperCase().endsWith(".KQ")
+      ? "KOSDAQ"
+      : query.trim().toUpperCase().endsWith(".KS")
+        ? "KOSPI"
+        : undefined;
   if (!openDartApiKey() || !normalized) return [];
   if (!cachedCorpCodes && timeoutMs < 8000) return [];
 
@@ -362,7 +371,7 @@ async function searchOpenDartSymbols(query: string, timeoutMs = 8000): Promise<S
       name: String(row.corp_name ?? row.stock_code ?? ""),
       exchange: "KRX",
       currency: "KRW" as const,
-      marketCountry: "KOSPI" as const,
+      marketCountry: explicitMarketCountry ?? "KOSPI",
       source: "opendart" as const
     }));
 }
@@ -543,30 +552,34 @@ export async function fetchMarketQuote(symbol: string): Promise<MarketQuote | nu
   const trimmed = symbol.trim();
   if (!trimmed) return null;
 
-  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooLookupSymbol(trimmed))}`);
-  url.searchParams.set("range", "1d");
-  url.searchParams.set("interval", "1d");
-  const response = await fetchWithTimeout(url, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    cache: "no-store"
-  });
+  for (const yahooSymbol of yahooLookupSymbols(trimmed)) {
+    const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}`);
+    url.searchParams.set("range", "1d");
+    url.searchParams.set("interval", "1d");
+    const response = await fetchWithTimeout(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      cache: "no-store"
+    });
 
-  if (!response.ok) return null;
+    if (!response.ok) continue;
 
-  const json = (await response.json()) as { chart?: { result?: Array<{ meta?: YahooChartMeta }> } };
-  const quote = json.chart?.result?.[0]?.meta;
-  if (!quote?.symbol) return null;
+    const json = (await response.json()) as { chart?: { result?: Array<{ meta?: YahooChartMeta }> } };
+    const quote = json.chart?.result?.[0]?.meta;
+    if (!quote?.symbol) continue;
 
-  const currency = inferCurrency(quote.symbol, quote.currency);
-  return {
-    symbol: normalizeSymbolForStorage(quote.symbol, quote.currency),
-    name: quote.longName ?? quote.shortName ?? quote.symbol,
-    exchange: quote.fullExchangeName ?? quote.exchangeName,
-    currency,
-    marketCountry: inferMarketCode(quote.symbol, quote.currency, quote.fullExchangeName ?? quote.exchangeName),
-    lastPrice: quote.regularMarketPrice ?? quote.chartPreviousClose,
-    source: "yahoo"
-  };
+    const currency = inferCurrency(quote.symbol, quote.currency);
+    return {
+      symbol: normalizeSymbolForStorage(quote.symbol, quote.currency),
+      name: quote.longName ?? quote.shortName ?? quote.symbol,
+      exchange: quote.fullExchangeName ?? quote.exchangeName,
+      currency,
+      marketCountry: inferMarketCode(quote.symbol, quote.currency, quote.fullExchangeName ?? quote.exchangeName),
+      lastPrice: quote.regularMarketPrice ?? quote.chartPreviousClose,
+      source: "yahoo"
+    };
+  }
+
+  return null;
 }
 
 export async function fetchMarketCandles(
@@ -576,7 +589,7 @@ export async function fetchMarketCandles(
     interval = "1d",
     limit = 24
   }: {
-    range?: "1mo" | "3mo" | "6mo" | "1y" | "5y";
+    range?: "1d" | "1mo" | "3mo" | "6mo" | "1y" | "5y";
     interval?: "1d" | "1wk" | "1mo";
     limit?: number;
   } = {}
@@ -584,69 +597,73 @@ export async function fetchMarketCandles(
   const trimmed = symbol.trim();
   if (!trimmed) return null;
 
-  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooLookupSymbol(trimmed))}`);
-  url.searchParams.set("range", range);
-  url.searchParams.set("interval", interval);
-  const response = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    cache: "no-store"
-  });
+  for (const yahooSymbol of yahooLookupSymbols(trimmed)) {
+    const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}`);
+    url.searchParams.set("range", range);
+    url.searchParams.set("interval", interval);
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      cache: "no-store"
+    });
 
-  if (!response.ok) return null;
+    if (!response.ok) continue;
 
-  const json = (await response.json()) as { chart?: { result?: YahooChartResult[] } };
-  const result = json.chart?.result?.[0];
-  const meta = result?.meta;
-  const quote = result?.indicators?.quote?.[0];
-  if (!result?.timestamp || !meta?.symbol || !quote) return null;
+    const json = (await response.json()) as { chart?: { result?: YahooChartResult[] } };
+    const result = json.chart?.result?.[0];
+    const meta = result?.meta;
+    const quote = result?.indicators?.quote?.[0];
+    if (!result?.timestamp || !meta?.symbol || !quote) continue;
 
-  const candles = result.timestamp
-    .map((timestamp, index) => {
-      const open = quote.open?.[index];
-      const high = quote.high?.[index];
-      const low = quote.low?.[index];
-      const close = quote.close?.[index];
-      if (
-        typeof open !== "number" ||
-        typeof high !== "number" ||
-        typeof low !== "number" ||
-        typeof close !== "number"
-      ) {
-        return null;
-      }
+    const candles = result.timestamp
+      .map((timestamp, index) => {
+        const open = quote.open?.[index];
+        const high = quote.high?.[index];
+        const low = quote.low?.[index];
+        const close = quote.close?.[index];
+        if (
+          typeof open !== "number" ||
+          typeof high !== "number" ||
+          typeof low !== "number" ||
+          typeof close !== "number"
+        ) {
+          return null;
+        }
 
-      return {
-        date: new Date(timestamp * 1000).toISOString(),
-        open,
-        high,
-        low,
-        close
-      };
-    })
-    .filter((candle): candle is MarketCandle => Boolean(candle))
-    .slice(-limit);
+        return {
+          date: new Date(timestamp * 1000).toISOString(),
+          open,
+          high,
+          low,
+          close
+        };
+      })
+      .filter((candle): candle is MarketCandle => Boolean(candle))
+      .slice(-limit);
 
-  if (candles.length === 0) return null;
+    if (candles.length === 0) continue;
 
-  const previousClose = meta.chartPreviousClose;
-  const lastClose = candles.at(-1)?.close;
-  const previousCandleClose = candles.at(-2)?.close;
-  const changeRate =
-    typeof previousCandleClose === "number" && previousCandleClose > 0 && typeof lastClose === "number"
-      ? (lastClose - previousCandleClose) / previousCandleClose
-      : typeof previousClose === "number" && previousClose > 0 && typeof lastClose === "number"
-        ? (lastClose - previousClose) / previousClose
-      : undefined;
+    const previousClose = meta.chartPreviousClose;
+    const lastClose = candles.at(-1)?.close;
+    const previousCandleClose = candles.at(-2)?.close;
+    const changeRate =
+      typeof previousCandleClose === "number" && previousCandleClose > 0 && typeof lastClose === "number"
+        ? (lastClose - previousCandleClose) / previousCandleClose
+        : typeof previousClose === "number" && previousClose > 0 && typeof lastClose === "number"
+          ? (lastClose - previousClose) / previousClose
+        : undefined;
 
-  return {
-    symbol: normalizeSymbolForStorage(meta.symbol, meta.currency),
-    currency: inferCurrency(meta.symbol, meta.currency),
-    marketCountry: inferMarketCode(meta.symbol, meta.currency, meta.fullExchangeName ?? meta.exchangeName),
-    candles,
-    previousClose,
-    regularMarketPrice: meta.regularMarketPrice,
-    changeRate
-  };
+    return {
+      symbol: normalizeSymbolForStorage(meta.symbol, meta.currency),
+      currency: inferCurrency(meta.symbol, meta.currency),
+      marketCountry: inferMarketCode(meta.symbol, meta.currency, meta.fullExchangeName ?? meta.exchangeName),
+      candles,
+      previousClose,
+      regularMarketPrice: meta.regularMarketPrice,
+      changeRate
+    };
+  }
+
+  return null;
 }
 
 function mergeSearchResults(
@@ -684,13 +701,26 @@ function yahooDividendSymbols(symbol: string) {
 }
 
 function annualDividendFromYahooRows(rows: YahooDividendEvent[]) {
-  const months = [
-    ...new Set(rows.map((row) => new Date(Number(row.date) * 1000).getMonth() + 1))
-  ];
-  const dividendCount = months.length >= 8 ? 12 : 4;
+  const latestDate = Number(rows[0]?.date);
+  if (!Number.isFinite(latestDate)) return 0;
+  const trailingStart = latestDate - 365 * 24 * 60 * 60;
+
   return rows
-    .slice(0, dividendCount)
+    .filter((row) => Number(row.date) > trailingStart && Number(row.date) <= latestDate)
     .reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+}
+
+function annualDividendFromDatedRows<T extends { date?: string; adjDividend?: number; dividend?: number }>(rows: T[]) {
+  const latestTime = rows[0]?.date ? new Date(rows[0].date).getTime() : NaN;
+  if (!Number.isFinite(latestTime)) return 0;
+  const trailingStart = latestTime - 365 * 24 * 60 * 60 * 1000;
+
+  return rows
+    .filter((row) => {
+      const time = row.date ? new Date(row.date).getTime() : NaN;
+      return Number.isFinite(time) && time > trailingStart && time <= latestTime;
+    })
+    .reduce((sum, row) => sum + Number(row.adjDividend ?? row.dividend ?? 0), 0);
 }
 
 async function fetchYahooDividendRecord(symbol: string): Promise<DividendRecord | null> {
@@ -747,8 +777,9 @@ export async function fetchDividendRecordFromMarket(symbol: string): Promise<Div
   if (!normalized) return null;
 
   if (normalizeKrSecurityCode(normalized)) {
-    const yahooRecord = await fetchYahooDividendRecord(normalized);
-    if (yahooRecord) return yahooRecord;
+    const openDartRecord = await fetchOpenDartDividendRecord(normalized);
+    if (openDartRecord) return openDartRecord;
+    return fetchYahooDividendRecord(normalized);
   }
 
   const openDartRecord = await fetchOpenDartDividendRecord(normalized);
@@ -762,11 +793,10 @@ export async function fetchDividendRecordFromMarket(symbol: string): Promise<Div
     if (response.ok) {
       const rows = ((await response.json()) as FmpDividendRow[])
         .filter((row) => row.date && (row.adjDividend || row.dividend))
+        .sort((a, b) => new Date(b.date ?? "").getTime() - new Date(a.date ?? "").getTime())
         .slice(0, 12);
       if (rows.length > 0) {
-        const annualDividendPerShare = rows
-          .slice(0, 4)
-          .reduce((sum, row) => sum + Number(row.adjDividend ?? row.dividend ?? 0), 0);
+        const annualDividendPerShare = annualDividendFromDatedRows(rows);
         return {
           symbol: normalized,
           currency: inferCurrency(normalized),

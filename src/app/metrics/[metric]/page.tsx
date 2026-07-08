@@ -13,12 +13,13 @@ import {
 } from "@/app/components/tds";
 import {
   candlesFromSnapshots,
-  changeRateFromSnapshots,
   dividendYieldCandlesFromSnapshots,
+  portfolioChangeRateFromMarketValue,
   returnCandlesFromSnapshots
 } from "@/lib/chart-metrics";
 import { summarizePortfolioDividend } from "@/lib/dividends";
 import { formatKrw, formatNumber } from "@/lib/format";
+import { fetchMarketCandles, type MarketChart } from "@/lib/market-data";
 import { getManualPortfolioOverview } from "@/lib/portfolio-store";
 import { getUserSession } from "@/lib/session";
 
@@ -31,7 +32,7 @@ type MetricDetailProps = {
 const METRIC_LABELS = {
   "daily-change": {
     title: "오늘 등락률",
-    description: "오늘 최신 포트폴리오 평가금액과 전일 확정 평가금액 기준으로 흐름을 보여줍니다."
+    description: "현재 포트폴리오 평가금액과 보유 종목 전일 종가 합산액 기준으로 흐름을 보여줍니다."
   },
   "holding-return": {
     title: "보유 수익률",
@@ -54,6 +55,10 @@ function formatPercent(value?: number) {
   return `${formatNumber(value * 100, 2)}%`;
 }
 
+function formatOptionalKrw(value?: number) {
+  return typeof value === "number" && Number.isFinite(value) ? formatKrw(value) : "-";
+}
+
 function rateTone(value?: number) {
   if (typeof value !== "number" || !Number.isFinite(value) || value === 0) return "flat";
   return value > 0 ? "up" : "down";
@@ -71,6 +76,21 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
 
   const portfolio = await getManualPortfolioOverview();
   const portfolioDividend = await summarizePortfolioDividend(portfolio);
+  const dailyCharts: Map<string, MarketChart | null> =
+    metric === "daily-change"
+      ? new Map(
+          await Promise.all(
+            portfolio.holdings.map(async (holding) => [
+              holding.symbol,
+              await fetchMarketCandles(holding.symbol, {
+                range: "1d",
+                interval: "1d",
+                limit: 1
+              }).catch(() => null)
+            ] as const)
+          )
+        )
+      : new Map();
   const candles =
     metric === "holding-return"
       ? returnCandlesFromSnapshots(portfolio.dailySnapshots)
@@ -83,7 +103,11 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
       ? portfolioDividend.totalReturnRate
       : metric === "dividend-yield"
         ? portfolioDividend.dividendYield
-        : changeRateFromSnapshots(portfolio.dailySnapshots);
+        : portfolioChangeRateFromMarketValue({
+            holdings: portfolio.holdings,
+            charts: dailyCharts,
+            exchangeRate: portfolio.exchangeRate
+          });
   const labels = METRIC_LABELS[metric];
 
   return (
@@ -99,25 +123,32 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
       <Grid columns={4} className="mt-16">
         <Metric label="현재 지표" value={<RatePill value={currentRate} />} />
         <Metric label="평가금액" value={formatKrw(portfolio.totalMarketValueKrw)} />
-        <Metric label="매입원금" value={formatKrw(portfolioDividend.costBasisKrw)} />
-        <Metric label="연 예상 배당" value={formatKrw(portfolioDividend.annualDividendKrw)} />
+        <Metric label="매입원금" value={formatOptionalKrw(portfolioDividend.costBasisKrw)} />
+        <Metric label="연 예상 배당" value={formatOptionalKrw(portfolioDividend.annualDividendKrw)} />
       </Grid>
 
       <SectionHeader
-        title="캔들 차트"
+        title={metric === "daily-change" ? "평가금액 캔들 차트" : "캔들 차트"}
         description="과거 날짜는 확정 마감 스냅샷, 최신 날짜는 현재 저장된 평가금액 기준입니다."
       />
 
       <CandleChart
         candles={candles}
-        label={`${labels.title} 상세 캔들 차트`}
+        label={metric === "daily-change" ? "포트폴리오 평가금액 상세 캔들 차트" : `${labels.title} 상세 캔들 차트`}
         size="detail"
         valueFormat={valueFormat}
       />
 
-      <SectionHeader title="계산 기준" description="관리자 포트폴리오와 일별 평가금액 스냅샷을 조합한 값입니다." />
+      <SectionHeader title="계산 기준" description="관리자 포트폴리오, 시장 가격, 일별 평가금액 스냅샷을 조합한 값입니다." />
 
       <List>
+        {metric === "daily-change" ? (
+          <ListRow
+            title="오늘 등락률"
+            description="현재 보유 평가금액 총합과 보유 종목별 전일 종가 기준 평가금액 총합 비교"
+            value={<RatePill value={currentRate} />}
+          />
+        ) : null}
         <ListRow
           title="보유 수익률"
           description="현재 평가금액과 매입환율이 반영된 원화 매입원금 기준"

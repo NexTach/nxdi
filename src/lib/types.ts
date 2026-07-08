@@ -144,17 +144,19 @@ export type DividendForecastLine = {
   currency: "KRW" | "USD";
   allocationKrw: number;
   estimatedQuantity: number;
-  annualDividendKrw: number;
+  annualDividendKrw?: number;
   lastDividendKrw?: number;
-  monthlyAverageKrw: number;
+  monthlyAverageKrw?: number;
+  dividendDataMissing?: boolean;
   expectedPaymentMonths: number[];
   nextPaymentMonth?: number;
 };
 
 export type DividendForecast = {
   amountKrw: number;
-  annualDividendKrw: number;
-  monthlyAverageKrw: number;
+  annualDividendKrw?: number;
+  monthlyAverageKrw?: number;
+  dividendDataMissing?: boolean;
   lines: DividendForecastLine[];
 };
 

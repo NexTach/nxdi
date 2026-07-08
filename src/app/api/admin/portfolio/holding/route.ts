@@ -18,11 +18,19 @@ const schema = z.object({
   currency: z.enum(["KRW", "USD"]),
   quantity: z.coerce.number().positive(),
   lastPrice: z.coerce.number().positive(),
-  averagePurchasePrice: z.coerce.number().nonnegative().optional(),
+  averagePurchasePrice: z.coerce.number().positive(),
   purchaseExchangeRate: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.coerce.number().min(500).max(3000).optional()
   )
+}).superRefine((value, context) => {
+  if (value.currency === "USD" && value.purchaseExchangeRate === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "USD holdings require purchase exchange rate",
+      path: ["purchaseExchangeRate"]
+    });
+  }
 });
 
 function normalizeHoldingSymbol(symbol: string, currency: "KRW" | "USD", marketCountry: string) {
@@ -48,7 +56,6 @@ export async function POST(request: Request) {
   await upsertManualHolding({
     ...parsed.data,
     symbol,
-    averagePurchasePrice: parsed.data.averagePurchasePrice || undefined,
     purchaseExchangeRate:
       parsed.data.currency === "USD" ? parsed.data.purchaseExchangeRate || undefined : undefined
   });

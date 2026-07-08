@@ -1,5 +1,6 @@
 import type { DividendForecast, DividendForecastLine, DividendRecord, PortfolioOverview } from "./types";
 import { fetchDividendRecordFromMarket } from "./market-data";
+import { portfolioCostBasisKrw } from "./portfolio-math";
 import { prisma } from "./prisma";
 
 const DIVIDEND_RECORD_STALE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -205,7 +206,7 @@ export async function forecastDividend(
     const estimatedQuantity = priceKrw > 0 ? allocationKrw / priceKrw : 0;
     const annualDividendKrw = record
       ? estimatedQuantity * dividendPerShareKrw(record, portfolio.exchangeRate)
-      : 0;
+      : undefined;
     const lastDividendKrw = record
       ? lastDividendPerShareKrw(record, portfolio.exchangeRate)
       : undefined;
@@ -219,19 +220,24 @@ export async function forecastDividend(
       allocationKrw,
       estimatedQuantity,
       annualDividendKrw,
+      dividendDataMissing: !record,
       lastDividendKrw:
         typeof lastDividendKrw === "number" ? estimatedQuantity * lastDividendKrw : undefined,
-      monthlyAverageKrw: annualDividendKrw / 12,
+      monthlyAverageKrw: typeof annualDividendKrw === "number" ? annualDividendKrw / 12 : undefined,
       expectedPaymentMonths: record?.expectedPaymentMonths ?? [],
       nextPaymentMonth: record ? getNextPaymentMonth(record.expectedPaymentMonths) : undefined
     };
   });
 
-  const annualDividendKrw = lines.reduce((sum, line) => sum + line.annualDividendKrw, 0);
+  const dividendDataMissing = lines.some((line) => line.dividendDataMissing);
+  const annualDividendKrw = dividendDataMissing
+    ? undefined
+    : lines.reduce((sum, line) => sum + (line.annualDividendKrw ?? 0), 0);
   return {
     amountKrw,
     annualDividendKrw,
-    monthlyAverageKrw: annualDividendKrw / 12,
+    monthlyAverageKrw: typeof annualDividendKrw === "number" ? annualDividendKrw / 12 : undefined,
+    dividendDataMissing,
     lines
   };
 }
@@ -241,30 +247,37 @@ export async function summarizePortfolioDividend(portfolio: PortfolioOverview) {
   const dividendRecords = await readDividendRecords();
   const recordsBySymbol = dividendRecordsBySymbol(dividendRecords);
 
-  const annualDividendKrw = portfolio.holdings.reduce((sum, holding) => {
+  let annualDividendKrw = 0;
+  let dividendDataMissing = false;
+  for (const holding of portfolio.holdings) {
+    if (holding.quantity <= 0 || holding.marketValueKrw <= 0) continue;
     const record = dividendLookupKeys(holding.symbol)
       .map((key) => recordsBySymbol.get(key))
       .find(Boolean);
-    if (!record) return sum;
-    return sum + holding.quantity * dividendPerShareKrw(record, portfolio.exchangeRate);
-  }, 0);
+    if (!record) {
+      dividendDataMissing = true;
+      continue;
+    }
+    annualDividendKrw += holding.quantity * dividendPerShareKrw(record, portfolio.exchangeRate);
+  }
 
-  const costBasisKrw = portfolio.holdings.reduce((sum, holding) => {
-    if (holding.costBasisKrw !== undefined) return sum + holding.costBasisKrw;
-    if (!holding.averagePurchasePrice || holding.averagePurchasePrice <= 0) return sum;
-    const purchaseExchangeRate = holding.purchaseExchangeRate ?? portfolio.exchangeRate;
-    const cost = holding.averagePurchasePrice * holding.quantity;
-    return sum + (holding.currency === "USD" ? cost * purchaseExchangeRate : cost);
-  }, 0);
+  const costBasisKrw = portfolioCostBasisKrw(portfolio.holdings);
+  const completeAnnualDividendKrw = dividendDataMissing ? undefined : annualDividendKrw;
 
   return {
-    annualDividendKrw,
-    monthlyAverageKrw: annualDividendKrw / 12,
+    annualDividendKrw: completeAnnualDividendKrw,
+    monthlyAverageKrw:
+      typeof completeAnnualDividendKrw === "number" ? completeAnnualDividendKrw / 12 : undefined,
+    dividendDataMissing,
     dividendYield:
-      portfolio.totalMarketValueKrw > 0 ? annualDividendKrw / portfolio.totalMarketValueKrw : 0,
+      typeof completeAnnualDividendKrw === "number" && portfolio.totalMarketValueKrw > 0
+        ? completeAnnualDividendKrw / portfolio.totalMarketValueKrw
+        : undefined,
     costBasisKrw,
     totalReturnRate:
-      costBasisKrw > 0 ? (portfolio.totalMarketValueKrw - costBasisKrw) / costBasisKrw : undefined
+      typeof costBasisKrw === "number" && costBasisKrw > 0
+        ? (portfolio.totalMarketValueKrw - costBasisKrw) / costBasisKrw
+        : undefined
   };
 }
 

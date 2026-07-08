@@ -101,10 +101,30 @@ describe("portfolioChangeRateFromMarketValue", () => {
 
     assert.equal(rate, 0.1);
   });
+
+  it("does not estimate a total rate from partial holding coverage", () => {
+    const rate = portfolioChangeRateFromMarketValue({
+      holdings: [
+        holding({}),
+        holding({
+          symbol: "MISS",
+          name: "Missing",
+          quantity: 10,
+          lastPrice: 50,
+          marketValue: 500,
+          marketValueKrw: 500
+        })
+      ],
+      charts: new Map([["TEST", chart({})]]),
+      exchangeRate: 1300
+    });
+
+    assert.equal(rate, undefined);
+  });
 });
 
 describe("changeRateFromSnapshots", () => {
-  it("uses stored daily portfolio total market values", () => {
+  it("does not estimate from unclosed previous snapshots", () => {
     const rate = changeRateFromSnapshots([
       {
         date: "2026-07-07",
@@ -122,7 +142,7 @@ describe("changeRateFromSnapshots", () => {
       }
     ]);
 
-    assert.equal(rate, 0.025);
+    assert.equal(rate, undefined);
   });
 
   it("compares the latest market value with the previous closed market value", () => {
@@ -198,6 +218,30 @@ describe("snapshot market value series", () => {
     ]);
     assert.equal(candlesFromSnapshots(snapshots)[0].close, 101000);
     assert.equal(candlesFromSnapshots(snapshots)[1].close, 102500);
+  });
+
+  it("omits unclosed historical points instead of using stale values", () => {
+    const snapshots = [
+      {
+        date: "2026-07-07",
+        totalMarketValueKrw: 100000,
+        exchangeRate: 1300,
+        createdAt: "2026-07-07T00:00:00.000Z",
+        updatedAt: "2026-07-07T12:00:00.000Z"
+      },
+      {
+        date: "2026-07-08",
+        totalMarketValueKrw: 102500,
+        exchangeRate: 1310,
+        createdAt: "2026-07-08T00:00:00.000Z",
+        updatedAt: "2026-07-08T12:00:00.000Z"
+      }
+    ];
+
+    assert.deepEqual(pointsFromSnapshots(snapshots), [
+      { date: "2026-07-08", value: 102500 }
+    ]);
+    assert.deepEqual(candlesFromSnapshots(snapshots).map((candle) => candle.date), ["2026-07-08"]);
   });
 });
 

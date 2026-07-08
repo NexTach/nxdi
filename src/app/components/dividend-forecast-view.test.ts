@@ -30,4 +30,12 @@ describe("forecastLinePaymentAmount", () => {
   it("keeps unscheduled annual dividend in the unscheduled bucket", () => {
     assert.equal(forecastLinePaymentAmount(forecastLine({ expectedPaymentMonths: [] })), 12000);
   });
+
+  it("does not convert missing dividend data to zero", () => {
+    assert.equal(forecastLinePaymentAmount(forecastLine({
+      annualDividendKrw: undefined,
+      monthlyAverageKrw: undefined,
+      dividendDataMissing: true
+    })), undefined);
+  });
 });

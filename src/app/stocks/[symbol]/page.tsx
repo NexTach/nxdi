@@ -55,6 +55,10 @@ function formatDividendAmount(record?: DividendRecord) {
   return formatCurrency(record.annualDividendPerShare, record.currency, 4);
 }
 
+function formatOptionalKrw(value?: number) {
+  return typeof value === "number" && Number.isFinite(value) ? formatKrw(value) : "-";
+}
+
 function formatPaymentMonths(months?: number[]) {
   if (!months || months.length === 0) return "-";
   return months.map((month) => `${month}월`).join(", ");
@@ -100,12 +104,15 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
       (dividendRecord.currency === "USD"
         ? dividendRecord.annualDividendPerShare * portfolio.exchangeRate
         : dividendRecord.annualDividendPerShare)
-    : 0;
-  const holdingDividendYield = holding.marketValueKrw > 0 ? annualDividendKrw / holding.marketValueKrw : undefined;
+    : undefined;
+  const holdingDividendYield =
+    typeof annualDividendKrw === "number" && holding.marketValueKrw > 0
+      ? annualDividendKrw / holding.marketValueKrw
+      : undefined;
   const returnCandles = buildHoldingReturnCandles(monthlyChart?.candles ?? [], holding, portfolio.exchangeRate);
   const yieldCandles = holdingDividendYieldCandles(
     monthlyChart?.candles ?? [],
-    annualDividendKrw,
+    annualDividendKrw ?? 0,
     holding,
     portfolio.exchangeRate
   );
@@ -213,8 +220,11 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
         <ListRow title="연 배당/주" value={formatDividendAmount(dividendRecord)} />
         <ListRow title="보유 기준 배당수익률" value={formatPercent(holdingDividendYield)} />
         <ListRow title="시장 배당수익률" value={formatPercent(dividendRecord?.trailingYield)} />
-        <ListRow title="보유 기준 연 예상 배당" value={formatKrw(annualDividendKrw)} />
-        <ListRow title="보유 기준 월평균 배당" value={formatKrw(annualDividendKrw / 12)} />
+        <ListRow title="보유 기준 연 예상 배당" value={formatOptionalKrw(annualDividendKrw)} />
+        <ListRow
+          title="보유 기준 월평균 배당"
+          value={formatOptionalKrw(typeof annualDividendKrw === "number" ? annualDividendKrw / 12 : undefined)}
+        />
         <ListRow title="예상 지급월" value={formatPaymentMonths(dividendRecord?.expectedPaymentMonths)} />
       </List>
     </AppShell>

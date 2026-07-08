@@ -41,5 +41,13 @@ export async function POST(request: Request) {
     return redirectWithFlash(request, "/admin", adminErrorFlash("trade_insufficient"));
   }
 
+  if (result.status === "missing_exchange_rate") {
+    return redirectWithFlash(request, "/admin", adminErrorFlash("invalid_exchange_rate"));
+  }
+
+  if (result.status === "missing_cost_basis") {
+    return redirectWithFlash(request, "/admin", adminErrorFlash("invalid_trade"));
+  }
+
   return redirectWithFlash(request, "/admin", adminSuccessFlash("portfolio", "traded"));
 }
