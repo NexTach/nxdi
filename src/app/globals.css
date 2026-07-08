@@ -702,6 +702,10 @@ button.full,
   border-top: 1px solid var(--line);
 }
 
+.list-row > div:first-child {
+  min-width: 0;
+}
+
 .list-row-title {
   font-size: var(--tds-text-md);
   font-weight: 750;
@@ -2138,11 +2142,13 @@ button.terms-modal-close {
   align-items: center;
   border-radius: 999px;
   display: inline-flex;
+  flex: 0 0 auto;
   font-size: var(--tds-text-xs);
   font-weight: 900;
   line-height: 1;
   min-height: 22px;
   padding: 4px 7px;
+  white-space: nowrap;
 }
 
 .trade-side.buy {
