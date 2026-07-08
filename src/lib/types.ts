@@ -107,6 +107,8 @@ export type PortfolioDailySnapshot = {
   date: string;
   totalMarketValueKrw: number;
   exchangeRate: number;
+  costBasisKrw?: number;
+  annualDividendKrw?: number;
   createdAt: string;
   updatedAt: string;
 };

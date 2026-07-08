@@ -88,6 +88,38 @@ export function candlesFromSnapshots(snapshots: PortfolioDailySnapshot[]) {
   }));
 }
 
+function pointCandle(date: string, value: number) {
+  return {
+    date,
+    open: value,
+    high: value,
+    low: value,
+    close: value
+  };
+}
+
+export function returnCandlesFromSnapshots(snapshots: PortfolioDailySnapshot[]) {
+  return snapshots.flatMap((snapshot) => {
+    const costBasisKrw = snapshot.costBasisKrw;
+    if (typeof costBasisKrw !== "number" || costBasisKrw <= 0) return [];
+    return [pointCandle(snapshot.date, (snapshot.totalMarketValueKrw - costBasisKrw) / costBasisKrw)];
+  });
+}
+
+export function dividendYieldCandlesFromSnapshots(snapshots: PortfolioDailySnapshot[]) {
+  return snapshots.flatMap((snapshot) => {
+    const annualDividendKrw = snapshot.annualDividendKrw;
+    if (
+      typeof annualDividendKrw !== "number" ||
+      annualDividendKrw <= 0 ||
+      snapshot.totalMarketValueKrw <= 0
+    ) {
+      return [];
+    }
+    return [pointCandle(snapshot.date, annualDividendKrw / snapshot.totalMarketValueKrw)];
+  });
+}
+
 export function aggregatePortfolioCandles({
   holdings,
   charts,

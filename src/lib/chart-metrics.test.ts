@@ -1,6 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { changeRateFromSnapshots, portfolioChangeRateFromMarketValue } from "./chart-metrics";
+import {
+  changeRateFromSnapshots,
+  dividendYieldCandlesFromSnapshots,
+  holdingDividendYieldCandles,
+  holdingReturnCandles,
+  portfolioChangeRateFromMarketValue,
+  returnCandlesFromSnapshots
+} from "./chart-metrics";
 import type { MarketChart } from "./market-data";
 import type { Holding } from "./types";
 
@@ -128,5 +135,76 @@ describe("changeRateFromSnapshots", () => {
     ]);
 
     assert.equal(rate, undefined);
+  });
+});
+
+describe("returnCandlesFromSnapshots", () => {
+  it("uses stored market value and cost basis snapshots", () => {
+    const candles = returnCandlesFromSnapshots([
+      {
+        date: "2026-07-08",
+        totalMarketValueKrw: 143000,
+        exchangeRate: 1300,
+        costBasisKrw: 100000,
+        annualDividendKrw: 5000,
+        createdAt: "2026-07-08T00:00:00.000Z",
+        updatedAt: "2026-07-08T00:00:00.000Z"
+      }
+    ]);
+
+    assert.equal(candles[0].close, 0.43);
+  });
+});
+
+describe("dividendYieldCandlesFromSnapshots", () => {
+  it("uses stored annual dividend and market value snapshots", () => {
+    const candles = dividendYieldCandlesFromSnapshots([
+      {
+        date: "2026-07-08",
+        totalMarketValueKrw: 143000,
+        exchangeRate: 1300,
+        costBasisKrw: 100000,
+        annualDividendKrw: 7150,
+        createdAt: "2026-07-08T00:00:00.000Z",
+        updatedAt: "2026-07-08T00:00:00.000Z"
+      }
+    ]);
+
+    assert.equal(candles[0].close, 0.05);
+  });
+});
+
+describe("holdingReturnCandles", () => {
+  it("uses current exchange rate for market value and purchase exchange rate for cost basis", () => {
+    const candles = holdingReturnCandles(
+      [{ date: "2026-01-02T00:00:00.000Z", open: 10, high: 12, low: 9, close: 11 }],
+      holding({
+        currency: "USD",
+        marketCountry: "NASDAQ",
+        quantity: 2,
+        averagePurchasePrice: 10,
+        purchaseExchangeRate: 1000
+      }),
+      1300
+    );
+
+    assert.equal(candles[0].close, 0.43);
+  });
+});
+
+describe("holdingDividendYieldCandles", () => {
+  it("uses current exchange rate adjusted holding market value as denominator", () => {
+    const candles = holdingDividendYieldCandles(
+      [{ date: "2026-01-02T00:00:00.000Z", open: 10, high: 12, low: 9, close: 11 }],
+      2860,
+      holding({
+        currency: "USD",
+        marketCountry: "NASDAQ",
+        quantity: 2
+      }),
+      1300
+    );
+
+    assert.equal(candles[0].close, 0.1);
   });
 });

@@ -12,15 +12,13 @@ import {
   Top
 } from "@/app/components/tds";
 import {
-  aggregatePortfolioCandles,
   candlesFromSnapshots,
   changeRateFromSnapshots,
-  dividendYieldCandles,
-  returnCandles
+  dividendYieldCandlesFromSnapshots,
+  returnCandlesFromSnapshots
 } from "@/lib/chart-metrics";
 import { summarizePortfolioDividend } from "@/lib/dividends";
 import { formatKrw, formatNumber } from "@/lib/format";
-import { fetchMarketCandles } from "@/lib/market-data";
 import { getManualPortfolioOverview } from "@/lib/portfolio-store";
 import { getUserSession } from "@/lib/session";
 
@@ -37,11 +35,11 @@ const METRIC_LABELS = {
   },
   "holding-return": {
     title: "보유 수익률",
-    description: "최근 5년 월봉 평가금액을 매입환율이 반영된 원화 매입원금 대비 수익률 캔들로 변환합니다."
+    description: "저장된 일별 포트폴리오 평가금액과 매입환율 반영 원화 원가 기준으로 흐름을 보여줍니다."
   },
   "dividend-yield": {
     title: "배당수익률",
-    description: "최근 5년 월봉 평가금액과 연 예상 배당금으로 배당수익률 캔들을 계산합니다."
+    description: "저장된 일별 포트폴리오 평가금액과 연 예상 배당금 기준으로 흐름을 보여줍니다."
   }
 } as const;
 
@@ -73,28 +71,11 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
 
   const portfolio = await getManualPortfolioOverview();
   const portfolioDividend = await summarizePortfolioDividend(portfolio);
-  const chartEntries = metric === "daily-change"
-    ? []
-    : await Promise.all(
-        portfolio.holdings.map(async (holding) => [
-          holding.symbol,
-          await fetchMarketCandles(holding.symbol, { range: "5y", interval: "1mo", limit: 60 }).catch(() => null)
-        ] as const)
-      );
-  const charts = new Map(chartEntries);
-  const portfolioCandles = metric === "daily-change"
-    ? []
-    : aggregatePortfolioCandles({
-        holdings: portfolio.holdings,
-        charts,
-        exchangeRate: portfolio.exchangeRate,
-        bucket: "month"
-      });
   const candles =
     metric === "holding-return"
-      ? returnCandles(portfolioCandles, portfolioDividend.costBasisKrw)
+      ? returnCandlesFromSnapshots(portfolio.dailySnapshots)
       : metric === "dividend-yield"
-        ? dividendYieldCandles(portfolioCandles, portfolioDividend.annualDividendKrw)
+        ? dividendYieldCandlesFromSnapshots(portfolio.dailySnapshots)
         : candlesFromSnapshots(portfolio.dailySnapshots);
   const valueFormat = metric === "daily-change" ? "krw" : "percent";
   const currentRate =
@@ -124,7 +105,7 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
 
       <SectionHeader
         title="캔들 차트"
-        description={metric === "daily-change" ? "저장된 일별 포트폴리오 평가금액 총액 기준입니다." : "최근 5년 월봉 기준입니다."}
+        description="저장된 일별 포트폴리오 평가금액 스냅샷 기준입니다."
       />
 
       <CandleChart
@@ -134,7 +115,7 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
         valueFormat={valueFormat}
       />
 
-      <SectionHeader title="계산 기준" description="관리자 포트폴리오와 시장 OHLC 데이터를 조합한 값입니다." />
+      <SectionHeader title="계산 기준" description="관리자 포트폴리오와 일별 평가금액 스냅샷을 조합한 값입니다." />
 
       <List>
         <ListRow

@@ -1,4 +1,5 @@
 import type { Holding, ManualPortfolioStore, MarketCode, PortfolioDailySnapshot, PortfolioOverview } from "./types";
+import { summarizePortfolioDividend } from "./dividends";
 import { fetchUsdKrwExchangeRate } from "./exchange-rate";
 import { prisma } from "./prisma";
 
@@ -76,6 +77,8 @@ function toPortfolioDailySnapshot(row: {
   snapshotDate: string;
   totalMarketValueKrw: number;
   exchangeRate: number;
+  costBasisKrw: number | null;
+  annualDividendKrw: number | null;
   createdAt: Date;
   updatedAt: Date;
 }): PortfolioDailySnapshot {
@@ -83,6 +86,8 @@ function toPortfolioDailySnapshot(row: {
     date: row.snapshotDate,
     totalMarketValueKrw: row.totalMarketValueKrw,
     exchangeRate: row.exchangeRate,
+    costBasisKrw: row.costBasisKrw ?? undefined,
+    annualDividendKrw: row.annualDividendKrw ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
   };
@@ -90,10 +95,14 @@ function toPortfolioDailySnapshot(row: {
 
 async function upsertPortfolioDailySnapshot({
   totalMarketValueKrw,
-  exchangeRate
+  exchangeRate,
+  costBasisKrw,
+  annualDividendKrw
 }: {
   totalMarketValueKrw: number;
   exchangeRate: number;
+  costBasisKrw: number;
+  annualDividendKrw: number;
 }) {
   const snapshotDate = portfolioSnapshotDate();
 
@@ -102,11 +111,15 @@ async function upsertPortfolioDailySnapshot({
     create: {
       snapshotDate,
       totalMarketValueKrw,
-      exchangeRate
+      exchangeRate,
+      costBasisKrw,
+      annualDividendKrw
     },
     update: {
       totalMarketValueKrw,
-      exchangeRate
+      exchangeRate,
+      costBasisKrw,
+      annualDividendKrw
     }
   });
 }
@@ -158,23 +171,30 @@ export async function readManualPortfolioStore(): Promise<ManualPortfolioStore> 
 export async function getManualPortfolioOverview(): Promise<PortfolioOverview> {
   const store = await readManualPortfolioStore();
   const totalMarketValueKrw = store.holdings.reduce((sum, holding) => sum + holding.marketValueKrw, 0);
-
-  await upsertPortfolioDailySnapshot({
-    totalMarketValueKrw,
-    exchangeRate: store.exchangeRate
-  });
-
-  const dailySnapshots = await readPortfolioDailySnapshots();
-
-  return {
+  const basePortfolio: PortfolioOverview = {
     source: "manual",
     fetchedAt: store.updatedAt,
     exchangeRate: store.exchangeRate,
     exchangeRateFetchedAt: store.exchangeRateFetchedAt ?? new Date().toISOString(),
     exchangeRateSource: store.exchangeRateSource ?? "fallback",
     totalMarketValueKrw,
-    dailySnapshots,
+    dailySnapshots: [],
     holdings: store.holdings
+  };
+  const dividendSummary = await summarizePortfolioDividend(basePortfolio);
+
+  await upsertPortfolioDailySnapshot({
+    totalMarketValueKrw,
+    exchangeRate: store.exchangeRate,
+    costBasisKrw: dividendSummary.costBasisKrw,
+    annualDividendKrw: dividendSummary.annualDividendKrw
+  });
+
+  const dailySnapshots = await readPortfolioDailySnapshots();
+
+  return {
+    ...basePortfolio,
+    dailySnapshots
   };
 }
 

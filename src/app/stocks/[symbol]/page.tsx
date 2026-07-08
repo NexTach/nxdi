@@ -101,6 +101,7 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
         ? dividendRecord.annualDividendPerShare * portfolio.exchangeRate
         : dividendRecord.annualDividendPerShare)
     : 0;
+  const holdingDividendYield = holding.marketValueKrw > 0 ? annualDividendKrw / holding.marketValueKrw : undefined;
   const returnCandles = buildHoldingReturnCandles(monthlyChart?.candles ?? [], holding, portfolio.exchangeRate);
   const yieldCandles = holdingDividendYieldCandles(
     monthlyChart?.candles ?? [],
@@ -134,7 +135,7 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
         />
         <Metric
           label={<TextLink className="metric-card-link" href="#dividend-yield-chart">배당수익률</TextLink>}
-          value={<RatePill value={dividendRecord?.trailingYield} />}
+          value={<RatePill value={holdingDividendYield} />}
         />
       </Grid>
 
@@ -210,7 +211,8 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
 
       <List>
         <ListRow title="연 배당/주" value={formatDividendAmount(dividendRecord)} />
-        <ListRow title="배당수익률" value={formatPercent(dividendRecord?.trailingYield)} />
+        <ListRow title="보유 기준 배당수익률" value={formatPercent(holdingDividendYield)} />
+        <ListRow title="시장 배당수익률" value={formatPercent(dividendRecord?.trailingYield)} />
         <ListRow title="보유 기준 연 예상 배당" value={formatKrw(annualDividendKrw)} />
         <ListRow title="보유 기준 월평균 배당" value={formatKrw(annualDividendKrw / 12)} />
         <ListRow title="예상 지급월" value={formatPaymentMonths(dividendRecord?.expectedPaymentMonths)} />

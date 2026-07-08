@@ -26,6 +26,8 @@ model PortfolioDailySnapshot {
   snapshotDate        String   @id @db.VarChar(10)
   totalMarketValueKrw Float
   exchangeRate        Float
+  costBasisKrw        Float?
+  annualDividendKrw   Float?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

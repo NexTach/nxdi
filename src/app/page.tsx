@@ -23,13 +23,12 @@ import {
   Top
 } from "@/app/components/tds";
 import {
-  aggregatePortfolioCandles,
   changeRateFromCandles,
   changeRateFromSnapshots,
-  dividendYieldPoints,
+  dividendYieldCandlesFromSnapshots,
   pointsFromCandles,
   pointsFromSnapshots,
-  returnPoints,
+  returnCandlesFromSnapshots,
   samplePoints
 } from "@/lib/chart-metrics";
 import { isAdminUser } from "@/lib/admin";
@@ -69,32 +68,17 @@ export default async function Home() {
     summarizePortfolioDividend(portfolio),
     readDisclosures({ take: 3 })
   ]);
-  const [dailyChartEntries, monthlyChartEntries] = await Promise.all([
-    Promise.all(
-      portfolio.holdings.map(async (holding) => [
-        holding.symbol,
-        await fetchMarketCandles(holding.symbol, { range: "1y", interval: "1d", limit: 252 }).catch(() => null)
-      ] as const)
-    ),
-    Promise.all(
-      portfolio.holdings.map(async (holding) => [
-        holding.symbol,
-        await fetchMarketCandles(holding.symbol, { range: "5y", interval: "1mo", limit: 60 }).catch(() => null)
-      ] as const)
-    )
-  ]);
+  const dailyChartEntries = await Promise.all(
+    portfolio.holdings.map(async (holding) => [
+      holding.symbol,
+      await fetchMarketCandles(holding.symbol, { range: "1y", interval: "1d", limit: 252 }).catch(() => null)
+    ] as const)
+  );
   const dailyCharts = new Map(dailyChartEntries);
-  const monthlyCharts = new Map(monthlyChartEntries);
-  const portfolioMonthlyCandles = aggregatePortfolioCandles({
-    holdings: portfolio.holdings,
-    charts: monthlyCharts,
-    exchangeRate: portfolio.exchangeRate,
-    bucket: "month"
-  });
   const portfolioDailyChangeRate = changeRateFromSnapshots(portfolio.dailySnapshots);
   const portfolioDailyPoints = pointsFromSnapshots(portfolio.dailySnapshots);
-  const holdingReturnPoints = returnPoints(portfolioMonthlyCandles, portfolioDividend.costBasisKrw);
-  const yieldPoints = dividendYieldPoints(portfolioMonthlyCandles, portfolioDividend.annualDividendKrw);
+  const holdingReturnPoints = pointsFromCandles(returnCandlesFromSnapshots(portfolio.dailySnapshots));
+  const yieldPoints = pointsFromCandles(dividendYieldCandlesFromSnapshots(portfolio.dailySnapshots));
   const portfolioAllocation = [...portfolio.holdings]
     .filter((holding) => holding.marketValueKrw > 0)
     .sort((a, b) => b.marketValueKrw - a.marketValueKrw)
