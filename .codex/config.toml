@@ -1,5 +1,4 @@
 model = "gpt-5.5"
-model_reasoning_effort = "high"
 web_search = "live"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
