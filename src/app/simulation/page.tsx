@@ -1,5 +1,5 @@
-import { LogOut, RefreshCw } from "lucide-react";
-import { redirect } from "next/navigation";
+import { RefreshCw } from "lucide-react";
+import { AuthNavActions } from "@/app/components/auth-actions";
 import { DividendForecastView } from "@/app/components/dividend-forecast-view";
 import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import {
@@ -35,7 +35,6 @@ function formatPercent(value?: number) {
 
 export default async function SimulationPage({ searchParams }: SimulationPageProps) {
   const user = await getUserSession();
-  if (!user) redirect("/login");
 
   const params = (await searchParams) ?? {};
   const amount = Math.max(10000, Number(firstParam(params.amountKrw) ?? 100000) || 100000);
@@ -46,14 +45,8 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
     <AppShell>
       <Navigation
         title="T-ETF 투자 시뮬레이션"
-        description={`${user.name} · 현재 포트폴리오 비중 기준`}
-        actions={
-          <form action="/api/auth/logout" method="post">
-            <button className="ghost" type="submit" title="로그아웃">
-              <LogOut size={18} />
-            </button>
-          </form>
-        }
+        description={user ? `${user.name} · 현재 포트폴리오 비중 기준` : "현재 포트폴리오 비중 기준"}
+        actions={<AuthNavActions user={user} />}
       />
 
       <Top

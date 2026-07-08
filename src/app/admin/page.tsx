@@ -2,6 +2,7 @@ import { LockKeyhole, Megaphone } from "lucide-react";
 import { AdminHoldingForm } from "./AdminHoldingForm";
 import { DisclosureForm } from "./DisclosureForm";
 import { DividendAllocationCalculator } from "./DividendAllocationCalculator";
+import { AuthNavActions, DataGsmLoginButton } from "@/app/components/auth-actions";
 import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
   AppShell,
@@ -26,7 +27,7 @@ import { getManualPortfolioOverview } from "@/lib/portfolio-store";
 import { getUserSession } from "@/lib/session";
 import { readStore } from "@/lib/store";
 import { stockPrimaryLabel, stockSecondaryLabel } from "@/lib/stock-display";
-import type { IntentStatus } from "@/lib/types";
+import type { AppUser, IntentStatus } from "@/lib/types";
 
 type AdminProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -145,12 +146,15 @@ function StatusForm({
   );
 }
 
-function AdminGate({ signedIn }: { signedIn: boolean }) {
+function AdminGate({ user }: { user: AppUser | null }) {
+  const signedIn = Boolean(user);
+
   return (
     <AppShell>
       <Navigation
         title="관리자 로그인"
         description="의향서 상태 관리"
+        actions={<AuthNavActions user={user} />}
       />
 
       <Top
@@ -169,9 +173,7 @@ function AdminGate({ signedIn }: { signedIn: boolean }) {
             : "DataGSM으로 로그인한 뒤, 이메일이 ADMIN_EMAILS에 포함된 계정만 접근할 수 있습니다."}
         </p>
         {!signedIn ? (
-          <a className="button" href="/api/auth/datagsm/start">
-            DataGSM으로 로그인
-          </a>
+          <DataGsmLoginButton />
         ) : null}
       </CtaPanel>
     </AppShell>
@@ -181,7 +183,7 @@ function AdminGate({ signedIn }: { signedIn: boolean }) {
 export default async function AdminPage({ searchParams }: AdminProps) {
   const params = (await searchParams) ?? {};
   const user = await getUserSession();
-  if (!isAdminUser(user)) return <AdminGate signedIn={Boolean(user)} />;
+  if (!isAdminUser(user)) return <AdminGate user={user} />;
 
   const [store, portfolio, dividendRecords, disclosures] = await Promise.all([
     readStore(),
@@ -242,6 +244,7 @@ export default async function AdminPage({ searchParams }: AdminProps) {
       <Navigation
         title="T-ETF 관리자"
         description="투자/출금 의향서 확인 및 상태 변경"
+        actions={<AuthNavActions user={user} />}
       />
 
       <Top

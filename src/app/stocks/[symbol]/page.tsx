@@ -1,4 +1,5 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { AuthNavActions } from "@/app/components/auth-actions";
 import { CandleChart } from "@/app/components/stock-chart";
 import {
   AppShell,
@@ -69,7 +70,6 @@ function formatMarket(holding: Holding) {
 
 export default async function StockDetailPage({ params }: StockDetailProps) {
   const user = await getUserSession();
-  if (!user) redirect("/login");
 
   const { symbol: symbolParam } = await params;
   const symbol = decodeURIComponent(symbolParam).toUpperCase();
@@ -116,7 +116,8 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
     <AppShell>
       <Navigation
         title="T-ETF"
-        description={`${user.name} · 종목 상세`}
+        description={user ? `${user.name} · 종목 상세` : "종목 상세"}
+        actions={<AuthNavActions user={user} />}
       />
 
       <Top title={primaryLabel} description={secondaryLabel} backLink={{ href: "/" }} />

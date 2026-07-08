@@ -8,11 +8,11 @@ export async function GET(request: NextRequest) {
   const redirectUri = process.env.DATAGSM_REDIRECT_URI ?? `${requestUrl.origin}/api/auth/datagsm/callback`;
 
   if (!clientId || !redirectUri) {
-    return NextResponse.redirect(new URL("/login?error=datagsm_not_configured", request.url));
+    return NextResponse.redirect(new URL("/?authError=datagsm_not_configured", request.url));
   }
 
   if (new URL(redirectUri).origin !== requestUrl.origin) {
-    return NextResponse.redirect(new URL("/login?error=oauth_origin", request.url));
+    return NextResponse.redirect(new URL("/?authError=oauth_origin", request.url));
   }
 
   const state = randomToken();

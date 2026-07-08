@@ -1,6 +1,6 @@
-import { LogOut } from "lucide-react";
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { AuthNavActions } from "@/app/components/auth-actions";
 import { DisclosureTradeDetails } from "@/app/components/disclosure-trades";
 import {
   AppShell,
@@ -30,7 +30,6 @@ export async function generateMetadata({ params }: DisclosureDetailProps): Promi
 
 export default async function DisclosureDetailPage({ params }: DisclosureDetailProps) {
   const user = await getUserSession();
-  if (!user) redirect("/login");
 
   const { id } = await params;
   const disclosure = await readDisclosure(id);
@@ -40,14 +39,8 @@ export default async function DisclosureDetailPage({ params }: DisclosureDetailP
     <AppShell>
       <Navigation
         title="T-ETF 공시"
-        description={`${user.name} · 공시 상세`}
-        actions={
-          <form action="/api/auth/logout" method="post">
-            <button className="ghost" type="submit" title="로그아웃">
-              <LogOut size={18} />
-            </button>
-          </form>
-        }
+        description={user ? `${user.name} · 공시 상세` : "공시 상세"}
+        actions={<AuthNavActions user={user} />}
       />
 
       <Top

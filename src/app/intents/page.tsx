@@ -1,7 +1,8 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LogOut, ShieldAlert } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, ShieldAlert } from "lucide-react";
 import { redirect } from "next/navigation";
+import { AuthNavActions } from "@/app/components/auth-actions";
 import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
@@ -80,7 +81,7 @@ async function readProductDescription() {
 
 export default async function IntentsPage({ searchParams }: IntentPageProps) {
   const user = await getUserSession();
-  if (!user) redirect("/login");
+  if (!user) redirect("/?loginRequired=1");
 
   const params = (await searchParams) ?? {};
   const [portfolio, store, termsMarkdown] = await Promise.all([
@@ -100,13 +101,7 @@ export default async function IntentsPage({ searchParams }: IntentPageProps) {
 
       <Navigation
         title="T-ETF"
-        actions={
-          <form action="/api/auth/logout" method="post">
-            <button className="ghost" type="submit" title="로그아웃">
-              <LogOut size={18} />
-            </button>
-          </form>
-        }
+        actions={<AuthNavActions user={user} />}
       />
 
       <Top

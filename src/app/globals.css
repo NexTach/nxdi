@@ -239,47 +239,6 @@ button.full,
   max-width: 480px;
 }
 
-.login-shell {
-  display: grid;
-  min-height: 100vh;
-  padding-bottom: 0;
-  place-items: center;
-}
-
-.login-gate {
-  align-items: center;
-  display: grid;
-  gap: var(--tds-space-5);
-  justify-items: center;
-}
-
-.login-brand {
-  align-items: center;
-  display: grid;
-  gap: 12px;
-  justify-items: center;
-}
-
-.login-brand-mark {
-  background: var(--accent);
-  border-radius: var(--tds-radius-lg);
-  color: #fff;
-  display: grid;
-  font-size: 20px;
-  font-weight: 800;
-  height: 52px;
-  place-items: center;
-  width: 52px;
-}
-
-.login-brand h1 {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0;
-  line-height: 1.2;
-  margin: 0;
-}
-
 .datagsm-login-button {
   align-items: center;
   background: #000000;
@@ -318,6 +277,13 @@ button.full,
   height: 14px;
   image-rendering: pixelated;
   width: 14px;
+}
+
+.nav-login-button {
+  font-size: var(--tds-text-sm);
+  gap: var(--tds-space-2);
+  min-width: 0;
+  width: 172px;
 }
 
 .tds-muted {

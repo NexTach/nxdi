@@ -1,13 +1,12 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { LogOut } from "lucide-react";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { AuthNavActions } from "@/app/components/auth-actions";
+import { IntentLink } from "@/app/components/intent-link";
 import {
   AppShell,
-  ButtonLink,
   Navigation,
   Notice,
   Panel,
@@ -27,7 +26,6 @@ async function readProductDescription() {
 
 export default async function ProductPage() {
   const user = await getUserSession();
-  if (!user) redirect("/login");
 
   const markdown = await readProductDescription();
 
@@ -35,23 +33,15 @@ export default async function ProductPage() {
     <AppShell>
       <Navigation
         title="T-ETF 상품 설명"
-        description={`${user.name} · Markdown 문서`}
-        actions={
-          <form action="/api/auth/logout" method="post">
-            <button className="ghost" type="submit" title="로그아웃">
-              <LogOut size={18} />
-            </button>
-          </form>
-        }
+        description={user ? `${user.name} · Markdown 문서` : "Markdown 문서"}
+        actions={<AuthNavActions user={user} />}
       />
 
       <Top
         backLink={{ href: "/", label: "포트폴리오" }}
         title="상품 설명"
         actions={
-          <ButtonLink href="/intents">
-            의향서 작성
-          </ButtonLink>
+          <IntentLink signedIn={Boolean(user)} />
         }
       />
 

@@ -1,4 +1,5 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { AuthNavActions } from "@/app/components/auth-actions";
 import { CandleChart } from "@/app/components/stock-chart";
 import {
   AppShell,
@@ -65,7 +66,6 @@ function RatePill({ value }: { value?: number }) {
 
 export default async function MetricDetailPage({ params }: MetricDetailProps) {
   const user = await getUserSession();
-  if (!user) redirect("/login");
 
   const { metric } = await params;
   if (!isMetricSlug(metric)) notFound();
@@ -122,7 +122,8 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
     <AppShell>
       <Navigation
         title="T-ETF"
-        description={`${user.name} · 지표 상세`}
+        description={user ? `${user.name} · 지표 상세` : "지표 상세"}
+        actions={<AuthNavActions user={user} />}
       />
 
       <Top title={labels.title} description={labels.description} backLink={{ href: "/" }} />

@@ -17,7 +17,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   const user = await getUserSession();
-  if (!user) return NextResponse.redirect(new URL("/login", request.url), { status: 303 });
+  if (!user) return NextResponse.redirect(new URL("/?loginRequired=1", request.url), { status: 303 });
 
   const parsed = schema.safeParse(Object.fromEntries((await request.formData()).entries()));
   if (!parsed.success) {

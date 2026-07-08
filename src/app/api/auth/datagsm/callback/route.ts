@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   cookieStore.delete("datagsm_code_verifier");
 
   if (!code || !state || !savedState || !codeVerifier || state !== savedState) {
-    return NextResponse.redirect(new URL("/login?error=oauth_state", request.url));
+    return NextResponse.redirect(new URL("/?authError=oauth_state", request.url));
   }
 
   try {
@@ -28,13 +28,13 @@ export async function GET(request: NextRequest) {
     const appUser = toEligibleAppUser(dataGsmUser);
 
     if (!appUser) {
-      return NextResponse.redirect(new URL("/login?error=not_eligible", request.url));
+      return NextResponse.redirect(new URL("/?authError=not_eligible", request.url));
     }
 
     await setUserSession(appUser);
     return NextResponse.redirect(new URL("/", request.url));
   } catch (error) {
     console.error(error);
-    return NextResponse.redirect(new URL("/login?error=oauth_failed", request.url));
+    return NextResponse.redirect(new URL("/?authError=oauth_failed", request.url));
   }
 }

@@ -1,7 +1,8 @@
-import { LogOut, ShieldAlert } from "lucide-react";
-import { redirect } from "next/navigation";
+import { ShieldAlert } from "lucide-react";
+import { AuthNavActions } from "@/app/components/auth-actions";
 import { DividendForecastView } from "@/app/components/dividend-forecast-view";
 import { DisclosureTradeSummary } from "@/app/components/disclosure-trades";
+import { IntentLink } from "@/app/components/intent-link";
 import { SparkLineChart } from "@/app/components/stock-chart";
 import { ToastStack, type ToastMessage } from "@/app/components/toast";
 import {
@@ -48,12 +49,35 @@ const HOME_HOLDINGS_PAGE_SIZE = 8;
 
 function homeToastMessages(params: Record<string, string | string[] | undefined>): ToastMessage[] {
   const messages: ToastMessage[] = [];
+  const authError = firstParam(params.authError);
   if (params.submitted) {
     messages.push({
       id: "submitted",
       title: "의향서가 제출되었습니다",
       description: "관리자가 확인 후 상태를 변경합니다.",
       tone: "success"
+    });
+  }
+  if (params.loginRequired) {
+    messages.push({
+      id: "login-required",
+      title: "로그인이 필요합니다",
+      description: "DataGSM으로 로그인한 뒤 의향서를 작성해주세요.",
+      tone: "info"
+    });
+  }
+  if (authError) {
+    const errorMessages: Record<string, string> = {
+      datagsm_not_configured: "DataGSM OAuth 환경변수가 아직 설정되지 않았습니다.",
+      not_eligible: "재학생 또는 졸업생으로 확인되지 않아 이용할 수 없습니다.",
+      oauth_state: "OAuth state 검증에 실패했습니다. 다시 로그인하세요.",
+      oauth_origin: "접속 주소와 OAuth 콜백 주소가 다릅니다. 같은 주소로 접속하세요.",
+      oauth_failed: "DataGSM 로그인 처리 중 오류가 발생했습니다."
+    };
+    messages.push({
+      id: `auth-error-${authError}`,
+      title: errorMessages[authError] ?? "로그인 처리 중 오류가 발생했습니다.",
+      tone: "error"
     });
   }
   if (params.error) {
@@ -64,6 +88,10 @@ function homeToastMessages(params: Record<string, string | string[] | undefined>
     });
   }
   return messages;
+}
+
+function firstParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function formatPercent(value?: number) {
@@ -82,8 +110,7 @@ function RatePill({ value }: { value?: number }) {
 
 export default async function Home({ searchParams }: HomeProps) {
   const user = await getUserSession();
-  if (!user) redirect("/login");
-  const isAdmin = isAdminUser(user);
+  const isAdmin = user ? isAdminUser(user) : false;
 
   const params = (await searchParams) ?? {};
   const portfolio = await getManualPortfolioOverview();
@@ -148,20 +175,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
       <Navigation
         title="T-ETF"
-        actions={
-          <>
-            {isAdmin ? (
-              <ButtonLink href="/admin" variant="secondary">
-                관리자
-              </ButtonLink>
-            ) : null}
-            <form action="/api/auth/logout" method="post">
-              <button className="ghost" type="submit" title="로그아웃">
-                <LogOut size={18} />
-              </button>
-            </form>
-          </>
-        }
+        actions={<AuthNavActions user={user} isAdmin={isAdmin} />}
       />
 
       <Top
@@ -178,9 +192,7 @@ export default async function Home({ searchParams }: HomeProps) {
             <ButtonLink href="/simulation" variant="secondary">
               투자 시뮬레이션
             </ButtonLink>
-            <ButtonLink href="/intents">
-              의향서 작성
-            </ButtonLink>
+            <IntentLink signedIn={Boolean(user)} />
           </>
         }
       />
