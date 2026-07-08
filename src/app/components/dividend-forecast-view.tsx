@@ -11,8 +11,7 @@ type DividendForecastViewMode = "simulation" | "holding";
 
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
 
-function monthlyAmount(line: DividendForecastLine, mode: DividendForecastViewMode) {
-  if (mode === "holding" && typeof line.lastDividendKrw === "number") return line.lastDividendKrw;
+export function forecastLinePaymentAmount(line: DividendForecastLine) {
   if (line.expectedPaymentMonths.length === 0) return line.annualDividendKrw;
   return line.annualDividendKrw / line.expectedPaymentMonths.length;
 }
@@ -32,10 +31,10 @@ export function DividendForecastView({
         return {
           month,
           items,
-          amountKrw: items.reduce((sum, line) => sum + monthlyAmount(line, mode), 0)
+          amountKrw: items.reduce((sum, line) => sum + forecastLinePaymentAmount(line), 0)
         };
       }),
-    [lines, mode]
+    [lines]
   );
   const unscheduledLines = lines.filter(
     (line) => line.annualDividendKrw > 0 && line.expectedPaymentMonths.length === 0
@@ -126,9 +125,11 @@ export function DividendForecastView({
                 ? `보유 ${formatNumber(line.estimatedQuantity, 5)}주`
                 : `배정 ${formatKrw(line.allocationKrw)} · 예상 ${formatNumber(line.estimatedQuantity, 5)}주`;
             const primaryAmount =
-              mode === "holding" && typeof line.lastDividendKrw === "number"
-                ? line.lastDividendKrw
+              mode === "holding" && line.expectedPaymentMonths.length > 0
+                ? forecastLinePaymentAmount(line)
                 : line.monthlyAverageKrw;
+            const amountLabel =
+              mode === "holding" && line.expectedPaymentMonths.length > 0 ? "회당 예상" : "월평균";
             return (
               <ListRow
                 key={line.symbol}
@@ -138,11 +139,13 @@ export function DividendForecastView({
                   <>
                     {formatKrw(primaryAmount)}
                     <RowMeta>
-                      {mode === "holding" && typeof line.lastDividendKrw === "number" ? "최근 배당 기준" : "월평균"} · 연{" "}
-                      {formatKrw(line.annualDividendKrw)} ·{" "}
+                      {amountLabel} · 연 {formatKrw(line.annualDividendKrw)} ·{" "}
                       {line.expectedPaymentMonths.length > 0
                         ? line.expectedPaymentMonths.map((month) => `${month}월`).join(", ")
                         : "지급월 없음"}
+                      {mode === "holding" && typeof line.lastDividendKrw === "number"
+                        ? ` · 최근 ${formatKrw(line.lastDividendKrw)}`
+                        : ""}
                     </RowMeta>
                   </>
                 }

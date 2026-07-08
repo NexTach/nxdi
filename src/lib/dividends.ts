@@ -2,43 +2,6 @@ import type { DividendForecast, DividendForecastLine, DividendRecord, PortfolioO
 import { fetchDividendRecordFromMarket } from "./market-data";
 import { prisma } from "./prisma";
 
-const DEFAULT_DIVIDENDS: DividendRecord[] = [
-  {
-    symbol: "SCHD",
-    currency: "USD",
-    annualDividendPerShare: 1.02,
-    trailingYield: 0.036,
-    expectedPaymentMonths: [3, 6, 9, 12],
-    lastDividendPerShare: 0.25,
-    memo: "분기 배당 ETF. 실제 배당은 분배금 공시 후 확정됩니다."
-  },
-  {
-    symbol: "VOO",
-    currency: "USD",
-    annualDividendPerShare: 7.1,
-    trailingYield: 0.014,
-    expectedPaymentMonths: [3, 7, 10, 12],
-    lastDividendPerShare: 1.78
-  },
-  {
-    symbol: "JEPI",
-    currency: "USD",
-    annualDividendPerShare: 4.2,
-    trailingYield: 0.074,
-    expectedPaymentMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-    lastDividendPerShare: 0.35
-  },
-  {
-    symbol: "005930",
-    currency: "KRW",
-    annualDividendPerShare: 1444,
-    trailingYield: 0.02,
-    expectedPaymentMonths: [4, 5, 8, 11],
-    lastDividendPerShare: 361,
-    memo: "국내 배당은 기준일, 주주총회, 지급일 확정 공시에 따라 달라집니다."
-  }
-];
-
 const DIVIDEND_RECORD_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function getNextPaymentMonth(months: number[]) {
@@ -81,23 +44,6 @@ function serializePaymentMonths(months: number[]) {
   return JSON.stringify([...new Set(months)].sort((a, b) => a - b));
 }
 
-async function ensureDividendSeed() {
-  const count = await prisma.dividendRecord.count();
-  if (count > 0) return;
-
-  await prisma.dividendRecord.createMany({
-    data: DEFAULT_DIVIDENDS.map((record) => ({
-      symbol: record.symbol,
-      currency: record.currency,
-      annualDividendPerShare: record.annualDividendPerShare,
-      trailingYield: record.trailingYield,
-      expectedPaymentMonths: serializePaymentMonths(record.expectedPaymentMonths),
-      lastDividendPerShare: record.lastDividendPerShare,
-      memo: record.memo
-    }))
-  });
-}
-
 function mapDividendRecord(row: {
   symbol: string;
   currency: string;
@@ -116,6 +62,62 @@ function mapDividendRecord(row: {
     lastDividendPerShare: row.lastDividendPerShare ?? undefined,
     memo: row.memo ?? undefined
   };
+}
+
+function dividendLookupKeys(symbol: string) {
+  const normalized = symbol.trim().toUpperCase();
+  if (!normalized) return [];
+
+  const strippedKrSuffix = normalized.replace(/\.(KS|KQ)$/, "");
+  const aliases = [normalized];
+  if (strippedKrSuffix !== normalized || /^(?=.*\d)[0-9A-Z]{6}$/.test(strippedKrSuffix)) {
+    aliases.push(strippedKrSuffix, `${strippedKrSuffix}.KS`, `${strippedKrSuffix}.KQ`);
+  }
+
+  return [...new Set(aliases)];
+}
+
+function dividendRecordsBySymbol(records: DividendRecord[]) {
+  const recordsBySymbol = new Map<string, DividendRecord>();
+  for (const record of records) {
+    for (const key of dividendLookupKeys(record.symbol)) {
+      if (!recordsBySymbol.has(key)) recordsBySymbol.set(key, record);
+    }
+  }
+  return recordsBySymbol;
+}
+
+function isMarketBackedDividendMemo(memo?: string | null) {
+  return Boolean(memo && (memo.includes("Yahoo") || memo.includes("FMP") || memo.includes("OpenDART")));
+}
+
+async function syncDividendRecordsForSymbols(symbols: string[]) {
+  const normalizedSymbols = [...new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))];
+  if (normalizedSymbols.length === 0) return;
+
+  const staleSince = new Date(Date.now() - DIVIDEND_RECORD_STALE_MS);
+  const existingRows = await prisma.dividendRecord.findMany({
+    select: { symbol: true, memo: true, updatedAt: true }
+  });
+  const existingRowsByKey = new Map<string, { symbol: string; memo: string | null; updatedAt: Date }>();
+
+  for (const row of existingRows) {
+    for (const key of dividendLookupKeys(row.symbol)) {
+      if (!existingRowsByKey.has(key)) existingRowsByKey.set(key, row);
+    }
+  }
+
+  await Promise.allSettled(
+    normalizedSymbols.map(async (symbol) => {
+      const existingRow = dividendLookupKeys(symbol)
+        .map((key) => existingRowsByKey.get(key))
+        .find(Boolean);
+      if (existingRow && existingRow.updatedAt >= staleSince && isMarketBackedDividendMemo(existingRow.memo)) return;
+
+      const record = await fetchDividendRecordFromMarket(symbol);
+      if (record) await upsertDividendRecord(record);
+    })
+  );
 }
 
 async function refreshStaleDividendRecords() {
@@ -138,7 +140,6 @@ async function refreshStaleDividendRecords() {
 }
 
 export async function readDividendRecords(): Promise<DividendRecord[]> {
-  await ensureDividendSeed();
   await refreshStaleDividendRecords();
   const rows = await prisma.dividendRecord.findMany({ orderBy: { symbol: "asc" } });
   return rows.map(mapDividendRecord);
@@ -175,22 +176,27 @@ export async function deleteDividendRecord(symbol: string) {
 }
 
 export async function getDividendRecord(symbol: string) {
+  await syncDividendRecordsForSymbols([symbol]);
   const records = await readDividendRecords();
-  return records.find((record) => record.symbol.toUpperCase() === symbol.toUpperCase());
+  const recordsBySymbol = dividendRecordsBySymbol(records);
+  return dividendLookupKeys(symbol)
+    .map((key) => recordsBySymbol.get(key))
+    .find(Boolean);
 }
 
 export async function forecastDividend(
   portfolio: PortfolioOverview,
   amountKrw: number
 ): Promise<DividendForecast> {
+  await syncDividendRecordsForSymbols(portfolio.holdings.map((holding) => holding.symbol));
   const dividendRecords = await readDividendRecords();
-  const recordsBySymbol = new Map(
-    dividendRecords.map((record) => [record.symbol.toUpperCase(), record])
-  );
+  const recordsBySymbol = dividendRecordsBySymbol(dividendRecords);
   const total = portfolio.totalMarketValueKrw || 1;
   const lines: DividendForecastLine[] = portfolio.holdings.map((holding) => {
     const allocationKrw = amountKrw * (holding.marketValueKrw / total);
-    const record = recordsBySymbol.get(holding.symbol.toUpperCase());
+    const record = dividendLookupKeys(holding.symbol)
+      .map((key) => recordsBySymbol.get(key))
+      .find(Boolean);
     const priceKrw =
       holding.currency === "USD"
         ? holding.lastPrice * portfolio.exchangeRate
@@ -231,13 +237,14 @@ export async function forecastDividend(
 }
 
 export async function summarizePortfolioDividend(portfolio: PortfolioOverview) {
+  await syncDividendRecordsForSymbols(portfolio.holdings.map((holding) => holding.symbol));
   const dividendRecords = await readDividendRecords();
-  const recordsBySymbol = new Map(
-    dividendRecords.map((record) => [record.symbol.toUpperCase(), record])
-  );
+  const recordsBySymbol = dividendRecordsBySymbol(dividendRecords);
 
   const annualDividendKrw = portfolio.holdings.reduce((sum, holding) => {
-    const record = recordsBySymbol.get(holding.symbol.toUpperCase());
+    const record = dividendLookupKeys(holding.symbol)
+      .map((key) => recordsBySymbol.get(key))
+      .find(Boolean);
     if (!record) return sum;
     return sum + holding.quantity * dividendPerShareKrw(record, portfolio.exchangeRate);
   }, 0);
