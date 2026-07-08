@@ -293,6 +293,7 @@ button.full,
   font-weight: 500;
   gap: 16px;
   height: 40px;
+  justify-content: center;
   line-height: 1;
   max-width: calc(100vw - 48px);
   min-height: 40px;
@@ -300,7 +301,7 @@ button.full,
   transition:
     background-color 180ms ease-in-out,
     transform 160ms ease;
-  width: 220px;
+  width: 260px;
 }
 
 .datagsm-login-button:hover {
