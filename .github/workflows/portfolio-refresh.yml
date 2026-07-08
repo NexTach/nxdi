@@ -1,4 +1,4 @@
-name: Portfolio refresh
+name: Portfolio Refresh
 
 on:
   schedule:
@@ -9,7 +9,7 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - name: Refresh portfolio snapshot
+      - name: Refresh Portfolio Snapshot
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           REFRESH_URL: https://t-etf.vercel.app/api/cron/portfolio/refresh
