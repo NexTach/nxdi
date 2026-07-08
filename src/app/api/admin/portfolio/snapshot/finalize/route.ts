@@ -1,25 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isAdminUser } from "@/lib/admin";
+import { cronAuthorized } from "@/lib/cron-auth";
 import { adminErrorFlash, adminSuccessFlash, redirectWithFlash } from "@/lib/flash";
-import { finalizePortfolioDailySnapshot, getManualPortfolioOverview } from "@/lib/portfolio-store";
+import { finalizePortfolioDailySnapshot, refreshPortfolioMarketSnapshot } from "@/lib/portfolio-store";
 import { getUserSession } from "@/lib/session";
 
 const schema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
 });
 
-function cronAuthorized(request: Request) {
-  const secret = process.env.PORTFOLIO_SNAPSHOT_SECRET;
-  if (!secret) return false;
-
-  const url = new URL(request.url);
-  const authorization = request.headers.get("authorization");
-  return authorization === `Bearer ${secret}` || url.searchParams.get("secret") === secret;
-}
-
 async function refreshAndFinalize(snapshotDate?: string) {
-  await getManualPortfolioOverview();
+  await refreshPortfolioMarketSnapshot();
   return finalizePortfolioDailySnapshot(snapshotDate);
 }
 

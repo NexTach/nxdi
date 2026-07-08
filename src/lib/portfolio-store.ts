@@ -1,12 +1,13 @@
 import type { Holding, ManualPortfolioStore, MarketCode, PortfolioDailySnapshot, PortfolioOverview } from "./types";
 import { summarizePortfolioDividend } from "./dividends";
 import { fetchUsdKrwExchangeRate } from "./exchange-rate";
+import { fetchMarketQuote } from "./market-data";
 import { holdingCostBasisKrw } from "./portfolio-math";
 import { prisma } from "./prisma";
 
 const MIN_REMAINING_QUANTITY = 0.0000001;
 const SNAPSHOT_TIMEZONE_OFFSET_MS = 9 * 60 * 60 * 1000;
-const SNAPSHOT_CLOSE_FRESHNESS_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const DAILY_SNAPSHOT_LIMIT = 370;
 
 function normalizeStore(store: ManualPortfolioStore): ManualPortfolioStore {
@@ -65,20 +66,12 @@ function normalizeStoredMarketCode(value: string, currency: "KRW" | "USD", symbo
   return "NASDAQ";
 }
 
-function portfolioSnapshotDate(date = new Date()) {
+export function portfolioSnapshotDate(date = new Date()) {
   return new Date(date.getTime() + SNAPSHOT_TIMEZONE_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-function snapshotDateEndUtc(snapshotDate: string) {
-  const [year, month, day] = snapshotDate.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day + 1) - SNAPSHOT_TIMEZONE_OFFSET_MS);
-}
-
-function isFreshClosingSnapshot(snapshotDate: string, updatedAt: Date) {
-  const closeBoundary = snapshotDateEndUtc(snapshotDate).getTime();
-  const updatedTime = updatedAt.getTime();
-  const ageAtClose = closeBoundary - updatedTime;
-  return ageAtClose >= 0 && ageAtClose <= SNAPSHOT_CLOSE_FRESHNESS_MS;
+export function previousPortfolioSnapshotDate(date = new Date()) {
+  return new Date(date.getTime() + SNAPSHOT_TIMEZONE_OFFSET_MS - DAY_MS).toISOString().slice(0, 10);
 }
 
 function toPortfolioDailySnapshot(row: {
@@ -140,32 +133,6 @@ async function upsertPortfolioDailySnapshot({
       annualDividendKrw: annualDividendKrw ?? null
     }
   });
-}
-
-async function finalizeClosablePortfolioDailySnapshots(currentSnapshotDate: string) {
-  const rows = await prisma.portfolioDailySnapshot.findMany({
-    where: {
-      snapshotDate: { lt: currentSnapshotDate },
-      closedAt: null
-    }
-  });
-
-  await Promise.all(
-    rows
-      .filter((row) => isFreshClosingSnapshot(row.snapshotDate, row.updatedAt))
-      .map((row) =>
-        prisma.portfolioDailySnapshot.update({
-          where: { snapshotDate: row.snapshotDate },
-          data: {
-            closeTotalMarketValueKrw: row.totalMarketValueKrw,
-            closeExchangeRate: row.exchangeRate,
-            closeCostBasisKrw: row.costBasisKrw,
-            closeAnnualDividendKrw: row.annualDividendKrw,
-            closedAt: row.updatedAt
-          }
-        })
-      )
-  );
 }
 
 export async function finalizePortfolioDailySnapshot(snapshotDate = portfolioSnapshotDate()) {
@@ -230,37 +197,132 @@ export async function readManualPortfolioStore(): Promise<ManualPortfolioStore> 
   });
 }
 
+export type PortfolioMarketPriceRefresh = {
+  attempted: number;
+  updated: string[];
+  skipped: Array<{
+    symbol: string;
+    reason: "quote_not_found" | "invalid_price" | "quote_error";
+  }>;
+};
+
+export async function refreshManualPortfolioMarketPrices(): Promise<PortfolioMarketPriceRefresh> {
+  const holdings = await prisma.portfolioHolding.findMany({ orderBy: { symbol: "asc" } });
+  const results = await Promise.all(
+    holdings.map(async (holding) => {
+      try {
+        const quote = await fetchMarketQuote(holding.symbol);
+        if (!quote) {
+          return {
+            status: "skipped" as const,
+            symbol: holding.symbol,
+            reason: "quote_not_found" as const
+          };
+        }
+
+        const lastPrice = quote.lastPrice;
+        if (typeof lastPrice !== "number" || !Number.isFinite(lastPrice) || lastPrice <= 0) {
+          return {
+            status: "skipped" as const,
+            symbol: holding.symbol,
+            reason: "invalid_price" as const
+          };
+        }
+
+        const profitLossRate =
+          holding.averagePurchasePrice && holding.averagePurchasePrice > 0
+            ? (lastPrice - holding.averagePurchasePrice) / holding.averagePurchasePrice
+            : null;
+
+        await prisma.portfolioHolding.update({
+          where: { symbol: holding.symbol },
+          data: {
+            lastPrice,
+            profitLossRate
+          }
+        });
+
+        return {
+          status: "updated" as const,
+          symbol: holding.symbol
+        };
+      } catch (error) {
+        console.error(`Portfolio market price refresh failed: ${holding.symbol}`, error);
+        return {
+          status: "skipped" as const,
+          symbol: holding.symbol,
+          reason: "quote_error" as const
+        };
+      }
+    })
+  );
+
+  return {
+    attempted: holdings.length,
+    updated: results.flatMap((result) => (result.status === "updated" ? [result.symbol] : [])),
+    skipped: results.flatMap((result) =>
+      result.status === "skipped" ? [{ symbol: result.symbol, reason: result.reason }] : []
+    )
+  };
+}
+
+export async function refreshPortfolioMarketSnapshot() {
+  const marketPriceRefresh = await refreshManualPortfolioMarketPrices();
+  const portfolio = await getManualPortfolioOverview();
+  const snapshotDate = portfolioSnapshotDate();
+
+  await writePortfolioDailySnapshot(portfolio, snapshotDate);
+
+  return {
+    status: "refreshed" as const,
+    snapshotDate,
+    totalMarketValueKrw: portfolio.totalMarketValueKrw,
+    exchangeRate: portfolio.exchangeRate,
+    marketPriceRefresh
+  };
+}
+
+export async function finalizePreviousPortfolioDailySnapshot(date = new Date()) {
+  const snapshotDate = previousPortfolioSnapshotDate(date);
+  const result = await finalizePortfolioDailySnapshot(snapshotDate);
+  const portfolio = await getManualPortfolioOverview();
+
+  return {
+    status: result.status,
+    snapshotDate,
+    currentSnapshotDate: portfolioSnapshotDate(date),
+    totalMarketValueKrw: portfolio.totalMarketValueKrw,
+    exchangeRate: portfolio.exchangeRate
+  };
+}
+
 export async function getManualPortfolioOverview(): Promise<PortfolioOverview> {
   const store = await readManualPortfolioStore();
   const totalMarketValueKrw = store.holdings.reduce((sum, holding) => sum + holding.marketValueKrw, 0);
-  const basePortfolio: PortfolioOverview = {
+  const dailySnapshots = await readPortfolioDailySnapshots();
+
+  return {
     source: "manual",
     fetchedAt: store.updatedAt,
     exchangeRate: store.exchangeRate,
     exchangeRateFetchedAt: store.exchangeRateFetchedAt ?? new Date().toISOString(),
     exchangeRateSource: store.exchangeRateSource ?? "fallback",
     totalMarketValueKrw,
-    dailySnapshots: [],
+    dailySnapshots,
     holdings: store.holdings
   };
-  const dividendSummary = await summarizePortfolioDividend(basePortfolio);
-  const snapshotDate = portfolioSnapshotDate();
+}
 
-  await finalizeClosablePortfolioDailySnapshots(snapshotDate);
+async function writePortfolioDailySnapshot(portfolio: PortfolioOverview, snapshotDate = portfolioSnapshotDate()) {
+  const dividendSummary = await summarizePortfolioDividend(portfolio);
+
   await upsertPortfolioDailySnapshot({
     snapshotDate,
-    totalMarketValueKrw,
-    exchangeRate: store.exchangeRate,
+    totalMarketValueKrw: portfolio.totalMarketValueKrw,
+    exchangeRate: portfolio.exchangeRate,
     costBasisKrw: dividendSummary.costBasisKrw,
     annualDividendKrw: dividendSummary.annualDividendKrw
   });
-
-  const dailySnapshots = await readPortfolioDailySnapshots();
-
-  return {
-    ...basePortfolio,
-    dailySnapshots
-  };
 }
 
 export async function upsertManualHolding(input: Omit<Holding, "marketValue" | "marketValueKrw">) {
