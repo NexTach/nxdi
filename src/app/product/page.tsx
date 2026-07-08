@@ -37,16 +37,11 @@ export default async function ProductPage() {
         title="T-ETF 상품 설명"
         description={`${user.name} · Markdown 문서`}
         actions={
-          <>
-            <ButtonLink href="/" variant="secondary">
-              포트폴리오
-            </ButtonLink>
-            <form action="/api/auth/logout" method="post">
-              <button className="ghost" type="submit" title="로그아웃">
-                <LogOut size={18} />
-              </button>
-            </form>
-          </>
+          <form action="/api/auth/logout" method="post">
+            <button className="ghost" type="submit" title="로그아웃">
+              <LogOut size={18} />
+            </button>
+          </form>
         }
       />
 
