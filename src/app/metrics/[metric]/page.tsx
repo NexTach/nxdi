@@ -31,15 +31,15 @@ type MetricDetailProps = {
 const METRIC_LABELS = {
   "daily-change": {
     title: "오늘 등락률",
-    description: "저장된 일별 포트폴리오 평가금액 총액 기준으로 흐름을 보여줍니다."
+    description: "오늘 최신 포트폴리오 평가금액과 전일 확정 평가금액 기준으로 흐름을 보여줍니다."
   },
   "holding-return": {
     title: "보유 수익률",
-    description: "저장된 일별 포트폴리오 평가금액과 매입환율 반영 원화 원가 기준으로 흐름을 보여줍니다."
+    description: "일별 확정 평가금액과 매입환율 반영 원화 원가 기준으로 흐름을 보여줍니다."
   },
   "dividend-yield": {
     title: "배당수익률",
-    description: "저장된 일별 포트폴리오 평가금액과 연 예상 배당금 기준으로 흐름을 보여줍니다."
+    description: "일별 확정 평가금액과 연 예상 배당금 기준으로 흐름을 보여줍니다."
   }
 } as const;
 
@@ -105,7 +105,7 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
 
       <SectionHeader
         title="캔들 차트"
-        description="저장된 일별 포트폴리오 평가금액 스냅샷 기준입니다."
+        description="과거 날짜는 확정 마감 스냅샷, 최신 날짜는 현재 저장된 평가금액 기준입니다."
       />
 
       <CandleChart

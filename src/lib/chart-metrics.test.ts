@@ -1,11 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  candlesFromSnapshots,
   changeRateFromSnapshots,
   dividendYieldCandlesFromSnapshots,
   holdingDividendYieldCandles,
   holdingReturnCandles,
   portfolioChangeRateFromMarketValue,
+  pointsFromSnapshots,
   returnCandlesFromSnapshots
 } from "./chart-metrics";
 import type { MarketChart } from "./market-data";
@@ -123,6 +125,33 @@ describe("changeRateFromSnapshots", () => {
     assert.equal(rate, 0.025);
   });
 
+  it("compares the latest market value with the previous closed market value", () => {
+    const rate = changeRateFromSnapshots([
+      {
+        date: "2026-07-07",
+        totalMarketValueKrw: 100000,
+        exchangeRate: 1300,
+        closeTotalMarketValueKrw: 101000,
+        closeExchangeRate: 1300,
+        closedAt: "2026-07-07T14:55:00.000Z",
+        createdAt: "2026-07-07T00:00:00.000Z",
+        updatedAt: "2026-07-07T14:55:00.000Z"
+      },
+      {
+        date: "2026-07-08",
+        totalMarketValueKrw: 102010,
+        exchangeRate: 1310,
+        closeTotalMarketValueKrw: 99000,
+        closeExchangeRate: 1310,
+        closedAt: "2026-07-08T14:55:00.000Z",
+        createdAt: "2026-07-08T00:00:00.000Z",
+        updatedAt: "2026-07-08T14:55:00.000Z"
+      }
+    ]);
+
+    assert.equal(rate, 0.01);
+  });
+
   it("does not estimate a rate when fewer than two snapshots exist", () => {
     const rate = changeRateFromSnapshots([
       {
@@ -135,6 +164,40 @@ describe("changeRateFromSnapshots", () => {
     ]);
 
     assert.equal(rate, undefined);
+  });
+});
+
+describe("snapshot market value series", () => {
+  it("uses closed values for historical points and latest values for the current point", () => {
+    const snapshots = [
+      {
+        date: "2026-07-07",
+        totalMarketValueKrw: 100000,
+        exchangeRate: 1300,
+        closeTotalMarketValueKrw: 101000,
+        closeExchangeRate: 1300,
+        closedAt: "2026-07-07T14:55:00.000Z",
+        createdAt: "2026-07-07T00:00:00.000Z",
+        updatedAt: "2026-07-07T14:55:00.000Z"
+      },
+      {
+        date: "2026-07-08",
+        totalMarketValueKrw: 102500,
+        exchangeRate: 1310,
+        closeTotalMarketValueKrw: 99000,
+        closeExchangeRate: 1310,
+        closedAt: "2026-07-08T14:55:00.000Z",
+        createdAt: "2026-07-08T00:00:00.000Z",
+        updatedAt: "2026-07-08T14:55:00.000Z"
+      }
+    ];
+
+    assert.deepEqual(pointsFromSnapshots(snapshots), [
+      { date: "2026-07-07", value: 101000 },
+      { date: "2026-07-08", value: 102500 }
+    ]);
+    assert.equal(candlesFromSnapshots(snapshots)[0].close, 101000);
+    assert.equal(candlesFromSnapshots(snapshots)[1].close, 102500);
   });
 });
 
@@ -154,6 +217,38 @@ describe("returnCandlesFromSnapshots", () => {
 
     assert.equal(candles[0].close, 0.43);
   });
+
+  it("uses closed market value and closed cost basis for historical returns", () => {
+    const candles = returnCandlesFromSnapshots([
+      {
+        date: "2026-07-07",
+        totalMarketValueKrw: 100000,
+        exchangeRate: 1300,
+        costBasisKrw: 50000,
+        closeTotalMarketValueKrw: 90000,
+        closeExchangeRate: 1300,
+        closeCostBasisKrw: 60000,
+        closedAt: "2026-07-07T14:55:00.000Z",
+        createdAt: "2026-07-07T00:00:00.000Z",
+        updatedAt: "2026-07-07T14:55:00.000Z"
+      },
+      {
+        date: "2026-07-08",
+        totalMarketValueKrw: 120000,
+        exchangeRate: 1310,
+        costBasisKrw: 100000,
+        closeTotalMarketValueKrw: 1,
+        closeExchangeRate: 1310,
+        closeCostBasisKrw: 1,
+        closedAt: "2026-07-08T14:55:00.000Z",
+        createdAt: "2026-07-08T00:00:00.000Z",
+        updatedAt: "2026-07-08T14:55:00.000Z"
+      }
+    ]);
+
+    assert.equal(candles[0].close, 0.5);
+    assert.equal(candles[1].close, 0.2);
+  });
 });
 
 describe("dividendYieldCandlesFromSnapshots", () => {
@@ -171,6 +266,38 @@ describe("dividendYieldCandlesFromSnapshots", () => {
     ]);
 
     assert.equal(candles[0].close, 0.05);
+  });
+
+  it("uses closed annual dividend and closed market value for historical dividend yield", () => {
+    const candles = dividendYieldCandlesFromSnapshots([
+      {
+        date: "2026-07-07",
+        totalMarketValueKrw: 100000,
+        exchangeRate: 1300,
+        annualDividendKrw: 10000,
+        closeTotalMarketValueKrw: 120000,
+        closeExchangeRate: 1300,
+        closeAnnualDividendKrw: 6000,
+        closedAt: "2026-07-07T14:55:00.000Z",
+        createdAt: "2026-07-07T00:00:00.000Z",
+        updatedAt: "2026-07-07T14:55:00.000Z"
+      },
+      {
+        date: "2026-07-08",
+        totalMarketValueKrw: 200000,
+        exchangeRate: 1310,
+        annualDividendKrw: 10000,
+        closeTotalMarketValueKrw: 1,
+        closeExchangeRate: 1310,
+        closeAnnualDividendKrw: 1,
+        closedAt: "2026-07-08T14:55:00.000Z",
+        createdAt: "2026-07-08T00:00:00.000Z",
+        updatedAt: "2026-07-08T14:55:00.000Z"
+      }
+    ]);
+
+    assert.equal(candles[0].close, 0.05);
+    assert.equal(candles[1].close, 0.05);
   });
 });
 

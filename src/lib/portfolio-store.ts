@@ -5,6 +5,7 @@ import { prisma } from "./prisma";
 
 const MIN_REMAINING_QUANTITY = 0.0000001;
 const SNAPSHOT_TIMEZONE_OFFSET_MS = 9 * 60 * 60 * 1000;
+const SNAPSHOT_CLOSE_FRESHNESS_MS = 60 * 60 * 1000;
 const DAILY_SNAPSHOT_LIMIT = 370;
 
 function normalizeStore(store: ManualPortfolioStore): ManualPortfolioStore {
@@ -73,12 +74,29 @@ function portfolioSnapshotDate(date = new Date()) {
   return new Date(date.getTime() + SNAPSHOT_TIMEZONE_OFFSET_MS).toISOString().slice(0, 10);
 }
 
+function snapshotDateEndUtc(snapshotDate: string) {
+  const [year, month, day] = snapshotDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + 1) - SNAPSHOT_TIMEZONE_OFFSET_MS);
+}
+
+function isFreshClosingSnapshot(snapshotDate: string, updatedAt: Date) {
+  const closeBoundary = snapshotDateEndUtc(snapshotDate).getTime();
+  const updatedTime = updatedAt.getTime();
+  const ageAtClose = closeBoundary - updatedTime;
+  return ageAtClose >= 0 && ageAtClose <= SNAPSHOT_CLOSE_FRESHNESS_MS;
+}
+
 function toPortfolioDailySnapshot(row: {
   snapshotDate: string;
   totalMarketValueKrw: number;
   exchangeRate: number;
   costBasisKrw: number | null;
   annualDividendKrw: number | null;
+  closeTotalMarketValueKrw: number | null;
+  closeExchangeRate: number | null;
+  closeCostBasisKrw: number | null;
+  closeAnnualDividendKrw: number | null;
+  closedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): PortfolioDailySnapshot {
@@ -88,24 +106,29 @@ function toPortfolioDailySnapshot(row: {
     exchangeRate: row.exchangeRate,
     costBasisKrw: row.costBasisKrw ?? undefined,
     annualDividendKrw: row.annualDividendKrw ?? undefined,
+    closeTotalMarketValueKrw: row.closeTotalMarketValueKrw ?? undefined,
+    closeExchangeRate: row.closeExchangeRate ?? undefined,
+    closeCostBasisKrw: row.closeCostBasisKrw ?? undefined,
+    closeAnnualDividendKrw: row.closeAnnualDividendKrw ?? undefined,
+    closedAt: row.closedAt?.toISOString(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
   };
 }
 
 async function upsertPortfolioDailySnapshot({
+  snapshotDate,
   totalMarketValueKrw,
   exchangeRate,
   costBasisKrw,
   annualDividendKrw
 }: {
+  snapshotDate: string;
   totalMarketValueKrw: number;
   exchangeRate: number;
   costBasisKrw: number;
   annualDividendKrw: number;
 }) {
-  const snapshotDate = portfolioSnapshotDate();
-
   await prisma.portfolioDailySnapshot.upsert({
     where: { snapshotDate },
     create: {
@@ -122,6 +145,50 @@ async function upsertPortfolioDailySnapshot({
       annualDividendKrw
     }
   });
+}
+
+async function finalizeClosablePortfolioDailySnapshots(currentSnapshotDate: string) {
+  const rows = await prisma.portfolioDailySnapshot.findMany({
+    where: {
+      snapshotDate: { lt: currentSnapshotDate },
+      closedAt: null
+    }
+  });
+
+  await Promise.all(
+    rows
+      .filter((row) => isFreshClosingSnapshot(row.snapshotDate, row.updatedAt))
+      .map((row) =>
+        prisma.portfolioDailySnapshot.update({
+          where: { snapshotDate: row.snapshotDate },
+          data: {
+            closeTotalMarketValueKrw: row.totalMarketValueKrw,
+            closeExchangeRate: row.exchangeRate,
+            closeCostBasisKrw: row.costBasisKrw,
+            closeAnnualDividendKrw: row.annualDividendKrw,
+            closedAt: row.updatedAt
+          }
+        })
+      )
+  );
+}
+
+export async function finalizePortfolioDailySnapshot(snapshotDate = portfolioSnapshotDate()) {
+  const row = await prisma.portfolioDailySnapshot.findUnique({ where: { snapshotDate } });
+  if (!row) return { status: "not_found" as const };
+
+  await prisma.portfolioDailySnapshot.update({
+    where: { snapshotDate },
+    data: {
+      closeTotalMarketValueKrw: row.totalMarketValueKrw,
+      closeExchangeRate: row.exchangeRate,
+      closeCostBasisKrw: row.costBasisKrw,
+      closeAnnualDividendKrw: row.annualDividendKrw,
+      closedAt: new Date()
+    }
+  });
+
+  return { status: "closed" as const };
 }
 
 async function readPortfolioDailySnapshots(limit = DAILY_SNAPSHOT_LIMIT) {
@@ -182,8 +249,11 @@ export async function getManualPortfolioOverview(): Promise<PortfolioOverview> {
     holdings: store.holdings
   };
   const dividendSummary = await summarizePortfolioDividend(basePortfolio);
+  const snapshotDate = portfolioSnapshotDate();
 
+  await finalizeClosablePortfolioDailySnapshots(snapshotDate);
   await upsertPortfolioDailySnapshot({
+    snapshotDate,
     totalMarketValueKrw,
     exchangeRate: store.exchangeRate,
     costBasisKrw: dividendSummary.costBasisKrw,

@@ -109,6 +109,11 @@ export type PortfolioDailySnapshot = {
   exchangeRate: number;
   costBasisKrw?: number;
   annualDividendKrw?: number;
+  closeTotalMarketValueKrw?: number;
+  closeExchangeRate?: number;
+  closeCostBasisKrw?: number;
+  closeAnnualDividendKrw?: number;
+  closedAt?: string;
   createdAt: string;
   updatedAt: string;
 };

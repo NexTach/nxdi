@@ -31,6 +31,8 @@ const adminErrorTitles: Record<string, string> = {
   invalid_dividend_delete: "삭제할 배당 데이터를 다시 확인해주세요",
   invalid_dividend_sync: "동기화할 종목을 다시 확인해주세요",
   dividend_sync_failed: "외부 배당 데이터를 가져오지 못했습니다",
+  invalid_snapshot: "확정할 스냅샷 날짜를 다시 확인해주세요",
+  snapshot_not_found: "확정할 스냅샷을 찾을 수 없습니다",
   invalid_disclosure: "공시 입력값을 다시 확인해주세요",
   invalid_disclosure_trade: "공시 거래 이력 입력값을 다시 확인해주세요",
   invalid_disclosure_delete: "삭제할 공시를 다시 확인해주세요"
