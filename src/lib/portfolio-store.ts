@@ -10,7 +10,7 @@ const SNAPSHOT_TIMEZONE_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DAILY_SNAPSHOT_LIMIT = 370;
 
-function normalizeStore(store: ManualPortfolioStore): ManualPortfolioStore {
+export function normalizeManualPortfolioStore(store: ManualPortfolioStore): ManualPortfolioStore {
   const exchangeRate = Number(store.exchangeRate) || 1380;
   const holdings = store.holdings.map((holding) => {
     const marketValue = holding.quantity * holding.lastPrice;
@@ -54,7 +54,7 @@ function normalizeStore(store: ManualPortfolioStore): ManualPortfolioStore {
     exchangeRateFetchedAt: store.exchangeRateFetchedAt,
     exchangeRateSource: store.exchangeRateSource,
     updatedAt: store.updatedAt,
-    holdings
+    holdings: holdings.sort((a, b) => b.marketValueKrw - a.marketValueKrw || a.symbol.localeCompare(b.symbol))
   };
 }
 
@@ -175,7 +175,7 @@ export async function readManualPortfolioStore(): Promise<ManualPortfolioStore> 
       null
     ) ?? new Date();
 
-  return normalizeStore({
+  return normalizeManualPortfolioStore({
     exchangeRate: exchangeRateSnapshot.rate,
     exchangeRateFetchedAt: exchangeRateSnapshot.fetchedAt,
     exchangeRateSource: exchangeRateSnapshot.source,
