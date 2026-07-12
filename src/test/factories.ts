@@ -1,4 +1,4 @@
-import type { AppStore, Holding, InvestmentIntent, PortfolioOverview } from "@/lib/types";
+import type { AppStore, Holding, InvestmentIntent, PortfolioOverview, WithdrawalIntent } from "@/lib/types";
 
 export function makeHolding(overrides: Partial<Holding> = {}): Holding {
   return {
@@ -45,6 +45,25 @@ export function makeInvestmentIntent(overrides: Partial<InvestmentIntent> = {}):
     contact: "010-0000-0000",
     guardianConfirmed: true,
     dividendPolicyAgreed: true,
+    status: "PENDING",
+    createdAt: "2026-07-09T00:00:00.000Z",
+    updatedAt: "2026-07-09T00:00:00.000Z",
+    ...overrides
+  };
+}
+
+export function makeWithdrawalIntent(overrides: Partial<WithdrawalIntent> = {}): WithdrawalIntent {
+  return {
+    id: "withdrawal-1",
+    type: "WITHDRAWAL",
+    userId: "user-1",
+    userName: "User",
+    userEmail: "user@example.com",
+    amountKrw: 50000,
+    bankName: "Test Bank",
+    accountNumber: "1234567890",
+    accountHolder: "User",
+    contact: "010-0000-0000",
     status: "PENDING",
     createdAt: "2026-07-09T00:00:00.000Z",
     updatedAt: "2026-07-09T00:00:00.000Z",

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import { Field, MutedText, TdsSelect } from "@/app/components/tds";
 import { calculateDividendAllocation } from "@/lib/dividend-allocation";
+import { eligibleDividendIntents } from "@/lib/dividend-eligibility";
 import { formatDateTime, formatKrw, formatNumber } from "@/lib/format";
 
 type DividendAllocationIntent = {
@@ -12,11 +13,12 @@ type DividendAllocationIntent = {
   userEmail: string;
   amountKrw: number;
   createdAt: string;
+  updatedAt: string;
 };
 
 type DividendAllocationCalculatorProps = {
   intents: DividendAllocationIntent[];
-  investorPrincipalKrw: number;
+  defaultDividendMonth: string;
   totalMarketValueKrw: number;
 };
 
@@ -32,16 +34,22 @@ function formatPercent(value: number) {
 
 export function DividendAllocationCalculator({
   intents,
-  investorPrincipalKrw,
+  defaultDividendMonth,
   totalMarketValueKrw
 }: DividendAllocationCalculatorProps) {
   const [actualDividend, setActualDividend] = useState("");
+  const [dividendMonth, setDividendMonth] = useState(defaultDividendMonth);
   const [selectedIntentId, setSelectedIntentId] = useState(() => intents[0]?.id ?? "");
   const actualDividendKrw = parseInputAmount(actualDividend);
+  const eligibleIntents = useMemo(
+    () => eligibleDividendIntents(intents, dividendMonth),
+    [dividendMonth, intents]
+  );
+  const investorPrincipalKrw = eligibleIntents.reduce((sum, intent) => sum + intent.amountKrw, 0);
 
   const selectedIntent = useMemo(
-    () => intents.find((intent) => intent.id === selectedIntentId) ?? intents[0],
-    [intents, selectedIntentId]
+    () => eligibleIntents.find((intent) => intent.id === selectedIntentId) ?? eligibleIntents[0],
+    [eligibleIntents, selectedIntentId]
   );
   const allocation = calculateDividendAllocation({
     actualDividendKrw,
@@ -54,15 +62,24 @@ export function DividendAllocationCalculator({
   return (
     <div className="dividend-allocation-calculator">
       <div className="dividend-allocation-controls">
+        <Field htmlFor="dividend-allocation-month" label="배당 지급월">
+          <input
+            id="dividend-allocation-month"
+            onChange={(event) => setDividendMonth(event.currentTarget.value)}
+            type="month"
+            value={dividendMonth}
+          />
+          <p className="field-help">수락월의 다음 달부터 배당 대상 원금에 포함합니다.</p>
+        </Field>
         <Field htmlFor="dividend-allocation-intent" label="수락된 투자 의향서">
           <TdsSelect
             id="dividend-allocation-intent"
             value={selectedIntent?.id ?? ""}
             onChange={(event) => setSelectedIntentId(event.target.value)}
-            disabled={intents.length === 0}
+            disabled={eligibleIntents.length === 0}
           >
-            {intents.length === 0 ? <option value="">수락된 의향서 없음</option> : null}
-            {intents.map((intent) => (
+            {eligibleIntents.length === 0 ? <option value="">배당 대상 의향서 없음</option> : null}
+            {eligibleIntents.map((intent) => (
               <option key={intent.id} value={intent.id}>
                 {intent.userName} · {formatKrw(intent.amountKrw)} · {formatDateTime(intent.createdAt)}
               </option>
@@ -118,8 +135,8 @@ export function DividendAllocationCalculator({
       {!canCalculate ? (
         <p className="dividend-allocation-empty">
           {investorPrincipalKrw <= 0
-            ? "수락된 투자 원금이 있어야 배당 배분액을 계산할 수 있습니다."
-            : "수락된 투자 의향서가 없습니다."}
+            ? "선택한 지급월에 배당 대상이 되는 승인 원금이 없습니다."
+            : "배당 대상 투자 의향서가 없습니다."}
         </p>
       ) : (
         <div className="dividend-allocation-selected">
@@ -129,8 +146,8 @@ export function DividendAllocationCalculator({
             <MutedText>{selectedIntent.userEmail}</MutedText>
           </div>
           <div>
-            <span>제출일</span>
-            <strong>{formatDateTime(selectedIntent.createdAt)}</strong>
+            <span>수락 기준일</span>
+            <strong>{formatDateTime(selectedIntent.updatedAt)}</strong>
           </div>
           <div>
             <span>계산식</span>

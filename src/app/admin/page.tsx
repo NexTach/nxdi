@@ -534,14 +534,15 @@ export default async function AdminPage() {
       <Panel>
         <h2>실 배당금 지급 계산</h2>
         <DividendAllocationCalculator
+          defaultDividendMonth={roadmapToday.slice(0, 7)}
           intents={acceptedInvestmentIntents.map((intent) => ({
             id: intent.id,
             userName: intent.userName,
             userEmail: intent.userEmail,
             amountKrw: intent.amountKrw,
-            createdAt: intent.createdAt
+            createdAt: intent.createdAt,
+            updatedAt: intent.updatedAt
           }))}
-          investorPrincipalKrw={acceptedInvestment}
           totalMarketValueKrw={portfolio.totalMarketValueKrw}
         />
       </Panel>

@@ -6,7 +6,7 @@ import { createWithdrawalIntent, readStore } from "@/lib/store";
 import { withdrawalLimitForUser } from "@/lib/withdrawal-limit";
 
 const schema = z.object({
-  amountKrw: z.coerce.number().int().min(0).max(100000000),
+  amountKrw: z.coerce.number().int().positive().max(100000000),
   bankName: z.string().min(1).max(30),
   accountNumber: z.string().min(5).max(40),
   accountHolder: z.string().min(1).max(30),

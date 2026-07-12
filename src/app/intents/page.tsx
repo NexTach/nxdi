@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LockKeyhole, ShieldAlert } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, CircleDollarSign, LockKeyhole } from "lucide-react";
 import { AuthNavActions, DataGsmLoginButton } from "@/app/components/auth-actions";
 import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import { ToastStack, type ToastMessage } from "@/app/components/toast";
@@ -25,6 +25,7 @@ import {
 import { formatDateTime, formatKrw, formatNumber, statusLabel } from "@/lib/format";
 import { FLASH_COOKIE_NAME, getFlashMessages } from "@/lib/flash";
 import { getManualPortfolioOverview } from "@/lib/portfolio-store";
+import { PRODUCT_MAX_INVESTMENT_KRW, PRODUCT_MIN_INVESTMENT_KRW } from "@/lib/product-policy";
 import { getUserSession } from "@/lib/session";
 import { readStore } from "@/lib/store";
 import { withdrawalLimitForUser } from "@/lib/withdrawal-limit";
@@ -95,7 +96,7 @@ export default async function IntentsPage() {
   const myInvestments = store.investmentIntents.filter((intent) => intent.userId === user.id);
   const myWithdrawals = store.withdrawalIntents.filter((intent) => intent.userId === user.id);
   const myIntents = [...myInvestments, ...myWithdrawals];
-  const canRequestWithdrawal = withdrawalLimit.principalKrw > 0;
+  const canRequestWithdrawal = withdrawalLimit.maxAmountKrw > 0;
 
   return (
     <AppShell>
@@ -112,8 +113,9 @@ export default async function IntentsPage() {
         description="투자 의향과 출금 의향을 각각 제출할 수 있습니다. 제출된 내용은 관리자가 검토한 뒤 상태를 변경합니다."
       />
 
-      <Grid columns={3} className="mt-16">
-        <Metric label="내 수락된 투자 원금" value={formatKrw(withdrawalLimit.principalKrw)} />
+      <Grid columns={4} className="mt-16">
+        <Metric label="내 잔여 승인 원금" value={formatKrw(withdrawalLimit.principalKrw)} />
+        <Metric label="대기 중 출금" value={formatKrw(withdrawalLimit.pendingWithdrawalKrw)} />
         <Metric label="포트폴리오 하락률 반영" value={formatPercent(withdrawalLimit.drawdownRate)} />
         <Metric label="출금 가능 최대 상한" value={formatKrw(withdrawalLimit.maxAmountKrw)} />
       </Grid>
@@ -125,17 +127,18 @@ export default async function IntentsPage() {
           <h2>
             <ArrowUpRight size={18} /> 투자 의향서
           </h2>
-          <p className="lede">의향 금액은 원화 기준으로 자유롭게 입력할 수 있으며 최소 1만원부터 제출됩니다.</p>
+          <p className="lede">의향 금액은 1회 기준 최소 1만원부터 최대 100만원까지 제출할 수 있습니다.</p>
           <Form action="/api/intents/invest" method="post">
             <Field htmlFor="investAmount" label="의향 금액 (원화)">
               <FormattedNumberInput
                 id="investAmount"
-                min="10000"
+                max={PRODUCT_MAX_INVESTMENT_KRW}
+                min={PRODUCT_MIN_INVESTMENT_KRW}
                 name="amountKrw"
                 placeholder="예: 100,000"
                 required
               />
-              <p className="field-help">원화 기준 1만원 이상, 입력 중 쉼표가 자동으로 표시됩니다.</p>
+              <p className="field-help">원화 기준 1만원 이상 100만원 이하이며, 입력 중 쉼표가 자동으로 표시됩니다.</p>
             </Field>
             <Field htmlFor="depositorName" label="입금자명">
               <input id="depositorName" name="depositorName" defaultValue={user.name} required />
@@ -166,7 +169,7 @@ export default async function IntentsPage() {
             <ArrowDownToLine size={18} /> 출금 의향서
           </h2>
           <p className="lede">
-            수락된 투자 원금이 있을 때만 제출할 수 있으며, 포트폴리오 하락률을 반영해 0원부터 최대 상한까지 선택합니다.
+            잔여 승인 원금이 있을 때만 제출할 수 있으며, 승인·대기 출금과 포트폴리오 하락률을 반영한 상한 안에서 선택합니다.
           </p>
           <Form action="/api/intents/withdraw" method="post">
             <WithdrawalAmountSlider
@@ -174,7 +177,7 @@ export default async function IntentsPage() {
               maxAmountKrw={withdrawalLimit.maxAmountKrw}
             />
             {!canRequestWithdrawal ? (
-              <Notice className="compact-notice">수락된 투자 의향이 있어야 출금 의향서를 제출할 수 있습니다.</Notice>
+              <Notice className="compact-notice">승인·대기 출금과 포트폴리오 하락률을 반영한 출금 가능 금액이 없습니다.</Notice>
             ) : null}
             <Field htmlFor="bankName" label="은행">
               <input id="bankName" name="bankName" required disabled={!canRequestWithdrawal} />
@@ -225,11 +228,6 @@ export default async function IntentsPage() {
         ))}
         {myIntents.length === 0 ? <Empty>제출 내역이 없습니다.</Empty> : null}
       </List>
-
-      <Notice className="mt-18">
-        <ShieldAlert size={17} /> 이 서비스는 투자 권유, 투자자문, 자동매매, 금전 보관 기능을 제공하지 않는 의향서
-        관리 서비스입니다.
-      </Notice>
     </AppShell>
   );
 }

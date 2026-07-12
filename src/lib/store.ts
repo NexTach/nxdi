@@ -38,6 +38,24 @@ export async function readStore(): Promise<AppStore> {
   };
 }
 
+export async function readAcceptedNetInvestmentPrincipal() {
+  const [investments, withdrawals] = await Promise.all([
+    prisma.investmentIntent.aggregate({
+      where: { status: "ACCEPTED" },
+      _sum: { amountKrw: true }
+    }),
+    prisma.withdrawalIntent.aggregate({
+      where: { status: "ACCEPTED" },
+      _sum: { amountKrw: true }
+    })
+  ]);
+
+  return Math.max(
+    (investments._sum.amountKrw ?? 0) - (withdrawals._sum.amountKrw ?? 0),
+    0
+  );
+}
+
 export async function createInvestmentIntent(
   input: Omit<InvestmentIntent, "id" | "type" | "status" | "createdAt" | "updatedAt">
 ) {
@@ -68,6 +86,8 @@ export async function updateIntentStatus(params: {
   status: IntentStatus;
 }) {
   if (params.type === "INVESTMENT") {
+    const existing = await prisma.investmentIntent.findUnique({ where: { id: params.id } });
+    if (existing?.status === params.status) return toInvestmentIntent(existing);
     const row = await prisma.investmentIntent.update({
       where: { id: params.id },
       data: { status: params.status }
@@ -75,6 +95,8 @@ export async function updateIntentStatus(params: {
     return toInvestmentIntent(row);
   }
 
+  const existing = await prisma.withdrawalIntent.findUnique({ where: { id: params.id } });
+  if (existing?.status === params.status) return toWithdrawalIntent(existing);
   const row = await prisma.withdrawalIntent.update({
     where: { id: params.id },
     data: { status: params.status }

@@ -1,4 +1,3 @@
-import { ShieldAlert } from "lucide-react";
 import { AuthNavActions } from "@/app/components/auth-actions";
 import { PaginatedList } from "@/app/components/client-pagination";
 import { DividendForecastView } from "@/app/components/dividend-forecast-view";
@@ -15,7 +14,6 @@ import {
   ListRow,
   Metric,
   Navigation,
-  Notice,
   Panel,
   RowMeta,
   SectionHeader,
@@ -296,11 +294,6 @@ export default async function Home() {
           </section>
         </div>
       </div>
-
-      <Notice className="mt-18">
-        <ShieldAlert size={17} /> 이 서비스는 투자 권유, 투자자문, 자동매매, 금전 보관 기능을 제공하지 않는 의향서
-        관리 서비스입니다.
-      </Notice>
     </AppShell>
   );
 }

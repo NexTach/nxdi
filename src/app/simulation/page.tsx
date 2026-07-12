@@ -15,10 +15,13 @@ import {
   SectionHeader,
   Top
 } from "@/app/components/tds";
+import { calculateExpectedInvestorDividend } from "@/lib/dividend-allocation";
 import { forecastDividend } from "@/lib/dividends";
 import { formatKrw, formatNumber } from "@/lib/format";
 import { getManualPortfolioOverview } from "@/lib/portfolio-store";
+import { PRODUCT_MAX_INVESTMENT_KRW, PRODUCT_MIN_INVESTMENT_KRW } from "@/lib/product-policy";
 import { getUserSession } from "@/lib/session";
+import { readAcceptedNetInvestmentPrincipal } from "@/lib/store";
 
 type SimulationPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -41,9 +44,29 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
   const user = await getUserSession();
 
   const params = (await searchParams) ?? {};
-  const amount = Math.max(10000, Number(firstParam(params.amountKrw) ?? 100000) || 100000);
-  const portfolio = await getManualPortfolioOverview();
+  const requestedAmount = Number(firstParam(params.amountKrw) ?? 100000) || 100000;
+  const amount = Math.min(
+    PRODUCT_MAX_INVESTMENT_KRW,
+    Math.max(PRODUCT_MIN_INVESTMENT_KRW, requestedAmount)
+  );
+  const [portfolio, currentInvestorPrincipalKrw] = await Promise.all([
+    getManualPortfolioOverview(),
+    readAcceptedNetInvestmentPrincipal()
+  ]);
   const forecast = await forecastDividend(portfolio, amount);
+  const annualPortfolioDividendYield =
+    forecast.amountKrw > 0 && typeof forecast.annualDividendKrw === "number"
+      ? forecast.annualDividendKrw / forecast.amountKrw
+      : undefined;
+  const expectedPayout =
+    typeof annualPortfolioDividendYield === "number"
+      ? calculateExpectedInvestorDividend({
+          investmentKrw: amount,
+          currentPortfolioMarketValueKrw: portfolio.totalMarketValueKrw,
+          currentInvestorPrincipalKrw,
+          annualPortfolioDividendYield
+        })
+      : undefined;
 
   return (
     <AppShell>
@@ -55,7 +78,7 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
 
       <Top
         title="투자 배당 시뮬레이션"
-        description="가정 투자금을 현재 포트폴리오 비중대로 배정했을 때의 예상 배당을 계산합니다."
+        description="현재 포트폴리오 배당 전망에 상품의 배당 상한과 당사 몫 이전 정책을 적용해 예상 지급액을 계산합니다."
         backLink={{ href: "/" }}
         actions={
           <ButtonLink href="#forecast-section">
@@ -64,7 +87,7 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
         }
       />
 
-      <SectionHeader title="예상 배당 계산" description="가정 투자금 기준으로 배정금액과 예상 배당을 계산합니다." />
+      <SectionHeader title="정책 적용 예상 지급액" description="세금과 외부 비용을 차감하기 전의 가정값이며 실제 지급액은 실배당에 따라 달라집니다." />
 
       <Grid columns={2}>
         <CtaPanel>
@@ -73,13 +96,14 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
               <FormattedNumberInput
                 defaultValue={amount}
                 id="amountKrw"
-                min="10000"
+                max={PRODUCT_MAX_INVESTMENT_KRW}
+                min={PRODUCT_MIN_INVESTMENT_KRW}
                 name="amountKrw"
                 placeholder="예: 100,000"
                 required
                 step="10000"
               />
-              <p className="field-help">원화 기준으로 입력하면 쉼표가 자동으로 표시됩니다.</p>
+              <p className="field-help">1만원 이상 100만원 이하로 입력하면 쉼표가 자동으로 표시됩니다.</p>
             </Field>
             <button type="submit">
               <RefreshCw size={17} />
@@ -90,31 +114,32 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
 
         <List>
           <ListRow
-            title="연 예상 배당"
-            description="현재 USD/KRW 기준이며 세금과 향후 환율 변동은 반영되지 않습니다."
-            value={formatOptionalKrw(forecast.annualDividendKrw)}
+            title="정책 적용 연 예상 지급액"
+            description="월별 예상 지급액을 12개월로 단순 환산한 세전 금액"
+            value={formatOptionalKrw(expectedPayout?.annualExpectedDividendKrw)}
           />
           <ListRow
-            title="월평균 예상 배당"
-            description="연 예상 배당을 12개월로 나눈 값"
-            value={formatOptionalKrw(forecast.monthlyAverageKrw)}
+            title="정책 적용 월평균 지급액"
+            description="실배당 기반 배분, 당사 몫 20% 이전 및 월 상한 적용"
+            value={formatOptionalKrw(expectedPayout?.monthlyExpectedDividendKrw)}
           />
           <ListRow
-            title="가정 배당수익률"
-            description="가정 투자금 대비 연 예상 배당"
-            value={formatPercent(
-              forecast.amountKrw > 0 && typeof forecast.annualDividendKrw === "number"
-                ? forecast.annualDividendKrw / forecast.amountKrw
-                : undefined
-            )}
+            title="정책 적용 예상 지급수익률"
+            description="가정 투자금 대비 연 예상 지급액, 단순 연 상한 10%"
+            value={formatPercent(expectedPayout?.expectedAnnualPayoutRate)}
+          />
+          <ListRow
+            title="포트폴리오 원배당수익률"
+            description="정책 배분 전 보유 종목의 연 예상 배당 기준"
+            value={formatPercent(annualPortfolioDividendYield)}
           />
         </List>
       </Grid>
 
       <SectionHeader
         id="forecast-section"
-        title="예상 배당"
-        description="가정 투자금 기준 예상 배당을 월별 또는 종목별로 확인합니다."
+        title="포트폴리오 원배당 전망"
+        description="정책 배분 전 가정 투자금의 종목별 예상 배당입니다. 실제 지급액은 위 정책 적용 결과를 확인하세요."
       />
 
       <DividendForecastView lines={forecast.lines} />

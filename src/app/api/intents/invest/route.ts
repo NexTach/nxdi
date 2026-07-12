@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { intentErrorFlash, intentSubmittedFlash, loginRequiredFlash, redirectWithFlash } from "@/lib/flash";
+import { PRODUCT_MAX_INVESTMENT_KRW, PRODUCT_MIN_INVESTMENT_KRW } from "@/lib/product-policy";
 import { getUserSession } from "@/lib/session";
 import { createInvestmentIntent } from "@/lib/store";
 
 const schema = z.object({
-  amountKrw: z.coerce.number().int().min(10000).max(100000000),
+  amountKrw: z.coerce.number().int().min(PRODUCT_MIN_INVESTMENT_KRW).max(PRODUCT_MAX_INVESTMENT_KRW),
   depositorName: z.string().min(1).max(30),
   contact: z.string().min(4).max(80),
   guardianConfirmed: z.coerce.boolean().default(false),

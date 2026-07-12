@@ -8,7 +8,6 @@ import {
   AppShell,
   ButtonLink,
   Navigation,
-  Notice,
   Panel,
   Top
 } from "@/app/components/tds";
@@ -54,10 +53,6 @@ export default async function DividendPolicyPage() {
           <PolicyMarkdown markdown={markdown} />
         </article>
       </Panel>
-
-      <Notice className="mt-18">
-        표시된 배당 정책은 투자 권유나 투자자문이 아니며, 실제 계약 조건은 서비스 외부에서 별도로 확인해야 합니다.
-      </Notice>
     </AppShell>
   );
 }
