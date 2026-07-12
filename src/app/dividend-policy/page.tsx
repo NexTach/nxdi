@@ -30,8 +30,6 @@ export default async function DividendPolicyPage() {
   return (
     <AppShell>
       <Navigation
-        title="NXDI 배당 정책"
-        description={user ? `${user.name} · Markdown 문서` : "Markdown 문서"}
         actions={<AuthNavActions user={user} />}
       />
 

@@ -209,8 +209,7 @@ button.full,
   display: none;
 }
 
-.brand h1,
-.brand p {
+.brand h1 {
   margin: 0;
 }
 
@@ -220,13 +219,6 @@ button.full,
   font-weight: 700;
   letter-spacing: -0.015em;
   line-height: 1.2;
-}
-
-.brand p {
-  color: var(--muted);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10px;
-  letter-spacing: 0.025em;
 }
 
 .nav-actions {
@@ -4168,10 +4160,6 @@ button.ghost.danger {
   .topbar {
     margin: 0 calc(var(--tds-space-4) * -1);
     padding: var(--tds-space-2) var(--tds-space-4);
-  }
-
-  .brand p {
-    display: none;
   }
 
   .brand-mark {

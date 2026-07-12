@@ -71,8 +71,6 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
   return (
     <AppShell>
       <Navigation
-        title="NXDI 투자 시뮬레이션"
-        description={user ? `${user.name} · 현재 포트폴리오 비중 기준` : "현재 포트폴리오 비중 기준"}
         actions={<AuthNavActions user={user} />}
       />
 

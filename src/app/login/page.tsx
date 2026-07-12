@@ -7,7 +7,7 @@ export default async function LoginPage() {
 
   return (
     <AppShell>
-      <Navigation title="로그인" actions={<AuthNavActions user={user} />} />
+      <Navigation actions={<AuthNavActions user={user} />} />
 
       <Top
         title="DataGSM 로그인"

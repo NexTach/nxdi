@@ -31,8 +31,6 @@ export default async function ProductPage() {
   return (
     <AppShell>
       <Navigation
-        title="NXDI 상품 설명"
-        description={user ? `${user.name} · Markdown 문서` : "Markdown 문서"}
         actions={<AuthNavActions user={user} />}
       />
 

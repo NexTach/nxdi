@@ -43,8 +43,6 @@ export default async function DisclosuresPage() {
   return (
     <AppShell>
       <Navigation
-        title="NXDI 공시"
-        description={user ? `${user.name} · 공시 목록` : "공시 목록"}
         actions={<AuthNavActions user={user} />}
       />
 

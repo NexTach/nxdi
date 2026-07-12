@@ -58,7 +58,6 @@ function IntentGate({ messages }: { messages: ToastMessage[] }) {
       <ToastStack messages={messages} clearCookieName={FLASH_COOKIE_NAME} />
 
       <Navigation
-        title="의향서 로그인"
         actions={<AuthNavActions user={null} />}
       />
 
@@ -103,7 +102,6 @@ export default async function IntentsPage() {
       <ToastStack messages={flashMessages} clearCookieName={FLASH_COOKIE_NAME} />
 
       <Navigation
-        title="NXDI"
         actions={<AuthNavActions user={user} />}
       />
 

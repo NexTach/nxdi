@@ -7,7 +7,7 @@ import type {
 } from "react";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { FUND_KOREAN_NAME, FUND_NAME, FUND_TICKER } from "@/lib/brand";
+import { FUND_NAME, FUND_TICKER } from "@/lib/brand";
 
 type WithChildren = {
   children: ReactNode;
@@ -55,12 +55,9 @@ export function AppShell({ children, className }: WithChildren) {
 }
 
 export function Navigation({
-  title,
   actions,
   mark = FUND_TICKER
 }: {
-  title: string;
-  description?: ReactNode;
   actions?: ReactNode;
   mark?: string;
 }) {
@@ -73,7 +70,6 @@ export function Navigation({
             <span className="brand-name-full">{FUND_NAME}</span>
             <span className="brand-name-compact">NexTach {FUND_TICKER}</span>
           </h1>
-          <p>{FUND_TICKER} · {title === FUND_TICKER ? FUND_KOREAN_NAME : title}</p>
         </div>
       </Link>
       {actions ? <div className="nav-actions">{actions}</div> : null}

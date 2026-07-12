@@ -91,8 +91,6 @@ function AdminGate({ user }: { user: AppUser | null }) {
   return (
     <AppShell>
       <Navigation
-        title="관리자 로그인"
-        description="의향서 상태 관리"
         actions={<AuthNavActions user={user} />}
       />
 
@@ -154,8 +152,6 @@ export default async function AdminPage() {
       <ToastStack messages={flashMessages} clearCookieName={FLASH_COOKIE_NAME} />
 
       <Navigation
-        title="NXDI 관리자"
-        description="투자/출금 의향서 확인 및 상태 변경"
         actions={<AuthNavActions user={user} />}
       />
 

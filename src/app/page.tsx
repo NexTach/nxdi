@@ -119,7 +119,6 @@ export default async function Home() {
       <ToastStack messages={flashMessages} clearCookieName={FLASH_COOKIE_NAME} />
 
       <Navigation
-        title="NXDI"
         actions={<AuthNavActions user={user} isAdmin={isAdmin} />}
       />
 
