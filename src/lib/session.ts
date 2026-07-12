@@ -2,11 +2,14 @@ import { cookies } from "next/headers";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { AppUser } from "./types";
 
-const USER_COOKIE = "my_etf_session";
+const USER_COOKIE = "tdiv_session";
 const ONE_WEEK_SECONDS = 60 * 60 * 24 * 7;
 
 function secret() {
-  return process.env.APP_SESSION_SECRET ?? "dev-session-secret-change-me";
+  const configured = process.env.APP_SESSION_SECRET;
+  if (configured) return configured;
+  if (process.env.NODE_ENV !== "production") return "dev-session-secret-change-me";
+  throw new Error("APP_SESSION_SECRET is required in production");
 }
 
 function sign(payload: string) {

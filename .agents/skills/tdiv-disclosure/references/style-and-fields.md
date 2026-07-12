@@ -4,7 +4,7 @@ Use this reference for common structure, field selection, notation, and final re
 
 ## Common Structure
 
-Every T-ETF notice or disclosure must follow this shape:
+Every TDIV notice or disclosure must follow this shape:
 
 ```text
 [유형] 제목

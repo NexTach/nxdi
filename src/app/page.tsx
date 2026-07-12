@@ -120,12 +120,12 @@ export default async function Home() {
       <ToastStack messages={flashMessages} clearCookieName={FLASH_COOKIE_NAME} />
 
       <Navigation
-        title="T-ETF"
+        title="TDIV"
         actions={<AuthNavActions user={user} isAdmin={isAdmin} />}
       />
 
       <Top
-        title="T-ETF 포트폴리오"
+        title="TDIV 포트폴리오"
         description="공개 포트폴리오의 평가금액, 수익률, 배당수익률을 확인하고 참여 의향을 남길 수 있습니다."
         actions={
           <>

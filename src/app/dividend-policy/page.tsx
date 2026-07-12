@@ -15,8 +15,8 @@ import {
 import { getUserSession } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "배당 정책 | T-ETF",
-  description: "T-ETF 배당 정책 Markdown 문서"
+  title: "배당 정책 | TDIV",
+  description: "TDIV 배당 정책 Markdown 문서"
 };
 
 async function readDividendPolicy() {
@@ -31,7 +31,7 @@ export default async function DividendPolicyPage() {
   return (
     <AppShell>
       <Navigation
-        title="T-ETF 배당 정책"
+        title="TDIV 배당 정책"
         description={user ? `${user.name} · Markdown 문서` : "Markdown 문서"}
         actions={<AuthNavActions user={user} />}
       />

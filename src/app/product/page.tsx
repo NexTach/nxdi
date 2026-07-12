@@ -15,8 +15,8 @@ import {
 import { getUserSession } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "상품 설명 | T-ETF",
-  description: "T-ETF 상품 설명 Markdown 문서"
+  title: "상품 설명 | TDIV",
+  description: "TDIV 상품 설명 Markdown 문서"
 };
 
 async function readProductDescription() {
@@ -32,7 +32,7 @@ export default async function ProductPage() {
   return (
     <AppShell>
       <Navigation
-        title="T-ETF 상품 설명"
+        title="TDIV 상품 설명"
         description={user ? `${user.name} · Markdown 문서` : "Markdown 문서"}
         actions={<AuthNavActions user={user} />}
       />

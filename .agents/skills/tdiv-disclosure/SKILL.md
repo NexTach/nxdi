@@ -1,9 +1,9 @@
 ---
-name: t-etf-disclosure
-description: Draft, revise, or review Korean T-ETF notices and disclosures. Use when Codex needs to write or check T-ETF 공지/공시 documents for planned or completed capital increases, sales, reductions, rebalancing-related trades, execution reports, disclosure formatting, field selection, Korean ticker/name notation, date/time notation, amount wording, or pre-publication checklist validation.
+name: tdiv-disclosure
+description: Draft, revise, or review Korean NexTach Global Dividend Income Fund (TDIV) notices and disclosures. Use when Codex needs to write or check TDIV 공지/공시 documents for planned or completed capital increases, sales, reductions, rebalancing-related trades, execution reports, disclosure formatting, field selection, Korean ticker/name notation, date/time notation, amount wording, or pre-publication checklist validation.
 ---
 
-# T-ETF Disclosure Writing
+# NexTach Global Dividend Income Fund (TDIV) Disclosure Writing
 
 ## Output Contract
 

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     await setUserSession(appUser);
     return NextResponse.redirect(new URL("/", request.url));
   } catch (error) {
-    console.error(error);
+    console.error("DataGSM callback failed", error instanceof Error ? error.name : "unknown_error");
     return redirectWithFlash(request, "/", authErrorFlash("oauth_failed"), 307);
   }
 }

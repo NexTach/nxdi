@@ -122,7 +122,7 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
   return (
     <AppShell>
       <Navigation
-        title="T-ETF"
+        title="TDIV"
         description={user ? `${user.name} · 지표 상세` : "지표 상세"}
         actions={<AuthNavActions user={user} />}
       />

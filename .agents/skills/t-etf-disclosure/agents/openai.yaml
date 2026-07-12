@@ -1,4 +1,0 @@
-interface:
-  display_name: "T-ETF Disclosure"
-  short_description: "Draft Korean T-ETF notices and disclosures"
-  default_prompt: "Use $t-etf-disclosure to draft a Korean T-ETF disclosure or notice from the provided event details."

@@ -7,6 +7,7 @@ import type {
 } from "react";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { FUND_KOREAN_NAME, FUND_NAME, FUND_TICKER } from "@/lib/brand";
 
 type WithChildren = {
   children: ReactNode;
@@ -54,8 +55,9 @@ export function AppShell({ children, className }: WithChildren) {
 }
 
 export function Navigation({
+  title,
   actions,
-  mark = "T"
+  mark = FUND_TICKER
 }: {
   title: string;
   description?: ReactNode;
@@ -67,7 +69,11 @@ export function Navigation({
       <Link className="brand" href="/">
         <div className="brand-mark">{mark}</div>
         <div>
-          <h1>T-ETF</h1>
+          <h1>
+            <span className="brand-name-full">{FUND_NAME}</span>
+            <span className="brand-name-compact">NexTach {FUND_TICKER}</span>
+          </h1>
+          <p>{FUND_TICKER} · {title === FUND_TICKER ? FUND_KOREAN_NAME : title}</p>
         </div>
       </Link>
       {actions ? <div className="nav-actions">{actions}</div> : null}
@@ -95,6 +101,10 @@ export function Top({
 }) {
   return (
     <section className={cx("hero-band", className)} id={id}>
+      <div className="fund-eyebrow" aria-label={`${FUND_TICKER} fund identity`}>
+        <span>{FUND_TICKER}</span>
+        <span>Global Dividend Income</span>
+      </div>
       {backLink ? (
         <Link className="hero-back-link" href={backLink.href}>
           <ArrowLeft size={16} aria-hidden="true" />

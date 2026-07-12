@@ -6,3 +6,5 @@ data/*.json
 .idea
 tsconfig.tsbuildinfo
 npm-debug.log*
+.vercel
+.env*

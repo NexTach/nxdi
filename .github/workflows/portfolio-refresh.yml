@@ -12,7 +12,7 @@ jobs:
       - name: Refresh Portfolio Snapshot
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          REFRESH_URL: https://t-etf.vercel.app/api/cron/portfolio/refresh
+          REFRESH_URL: https://tdiv.vercel.app/api/cron/portfolio/refresh
         run: |
           if [ -z "$CRON_SECRET" ]; then
             echo "CRON_SECRET GitHub Actions secret is required."

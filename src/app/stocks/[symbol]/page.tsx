@@ -123,7 +123,7 @@ export default async function StockDetailPage({ params }: StockDetailProps) {
   return (
     <AppShell>
       <Navigation
-        title="T-ETF"
+        title="TDIV"
         description={user ? `${user.name} · 종목 상세` : "종목 상세"}
         actions={<AuthNavActions user={user} />}
       />

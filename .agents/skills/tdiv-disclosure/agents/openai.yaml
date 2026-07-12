@@ -1,0 +1,4 @@
+interface:
+  display_name: "TDIV Fund Disclosure"
+  short_description: "Draft Korean TDIV notices and disclosures"
+  default_prompt: "Use $tdiv-disclosure to draft a Korean TDIV disclosure or notice from the provided event details."

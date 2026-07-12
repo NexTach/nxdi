@@ -24,8 +24,8 @@ export async function generateMetadata({ params }: DisclosureDetailProps): Promi
   const disclosure = await readDisclosure(id);
 
   return {
-    title: disclosure ? `${disclosure.title} | T-ETF 공시` : "공시 | T-ETF",
-    description: disclosure?.body.slice(0, 120) ?? "T-ETF 공시 상세"
+    title: disclosure ? `${disclosure.title} | TDIV 공시` : "공시 | TDIV",
+    description: disclosure?.body.slice(0, 120) ?? "TDIV 공시 상세"
   };
 }
 
@@ -39,7 +39,7 @@ export default async function DisclosureDetailPage({ params }: DisclosureDetailP
   return (
     <AppShell>
       <Navigation
-        title="T-ETF 공시"
+        title="TDIV 공시"
         description={user ? `${user.name} · 공시 상세` : "공시 상세"}
         actions={<AuthNavActions user={user} />}
       />

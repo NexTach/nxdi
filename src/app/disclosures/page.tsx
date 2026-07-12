@@ -24,8 +24,8 @@ import {
 import { getUserSession } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "공시 | T-ETF",
-  description: "T-ETF 운용 로드맵과 공시 목록"
+  title: "공시 | TDIV",
+  description: "TDIV 운용 로드맵과 공시 목록"
 };
 
 const DISCLOSURES_PAGE_SIZE = 10;
@@ -43,7 +43,7 @@ export default async function DisclosuresPage() {
   return (
     <AppShell>
       <Navigation
-        title="T-ETF 공시"
+        title="TDIV 공시"
         description={user ? `${user.name} · 공시 목록` : "공시 목록"}
         actions={<AuthNavActions user={user} />}
       />

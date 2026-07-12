@@ -1,21 +1,23 @@
 :root {
-  --background: #f2f4f6;
+  --background: #f5f5fb;
   --surface: #ffffff;
-  --surface-muted: #f9fafb;
-  --text: #191f28;
-  --muted: #6b7684;
-  --weak: #8b95a1;
-  --line: #e5e8eb;
-  --line-strong: #d1d6db;
-  --accent: #3182f6;
-  --accent-dark: #1b64da;
-  --accent-soft: #e8f3ff;
+  --surface-muted: #f8f8fc;
+  --text: #17182d;
+  --muted: #6f7185;
+  --weak: #9496a8;
+  --line: #e5e5ef;
+  --line-strong: #d2d3e1;
+  --accent: #5b50e6;
+  --accent-dark: #4338ca;
+  --accent-soft: #eeecff;
   --success: #00855a;
   --success-soft: #e6f7ef;
   --warning: #b65f00;
   --warning-soft: #fff4e5;
   --danger: #e5484d;
   --danger-soft: #fff0f1;
+  --chart-down: #3182f6;
+  --chart-down-soft: #e8f3ff;
   --tds-chart-1: #3182f6;
   --tds-chart-2: #00a36c;
   --tds-chart-3: #f04452;
@@ -24,7 +26,7 @@
   --tds-chart-6: #0ea5b7;
   --tds-chart-7: #e04f9f;
   --tds-chart-8: #6b7684;
-  --shadow: 0 1px 2px rgba(25, 31, 40, 0.04), 0 6px 18px rgba(25, 31, 40, 0.05);
+  --shadow: 0 1px 2px rgba(40, 38, 80, 0.04), 0 6px 18px rgba(40, 38, 80, 0.05);
   --tds-radius-sm: 8px;
   --tds-radius-md: 12px;
   --tds-radius-lg: 16px;
@@ -56,6 +58,7 @@ body {
   background: var(--background);
   color: var(--text);
   font-family:
+    Pretendard,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
@@ -117,7 +120,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 a:focus-visible {
-  outline: 3px solid rgba(49, 130, 246, 0.28);
+  outline: 3px solid rgba(91, 80, 230, 0.24);
   outline-offset: 2px;
 }
 
@@ -129,7 +132,7 @@ button.secondary,
 
 button.secondary:hover,
 .button.secondary:hover {
-  background: #dcecff;
+  background: #e1dfff;
 }
 
 button.ghost,
@@ -188,14 +191,22 @@ button.full,
 .brand-mark {
   align-items: center;
   background: var(--accent);
-  border-radius: var(--tds-radius-md);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
   color: white;
   display: grid;
-  font-size: var(--tds-text-xs);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
   font-weight: 800;
-  height: 34px;
+  flex: 0 0 58px;
+  height: 30px;
+  letter-spacing: 0.08em;
   place-items: center;
-  width: 34px;
+  width: 58px;
+}
+
+.brand-name-compact {
+  display: none;
 }
 
 .brand h1,
@@ -204,15 +215,18 @@ button.full,
 }
 
 .brand h1 {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   line-height: 1.2;
 }
 
 .brand p {
   color: var(--muted);
-  font-size: var(--tds-text-xs);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.025em;
 }
 
 .nav-actions {
@@ -308,7 +322,18 @@ button.full,
   text-decoration: none;
 }
 
-.hero-band,
+.hero-band {
+  background: var(--accent);
+  border-bottom-left-radius: var(--tds-radius-xl);
+  border-bottom-right-radius: var(--tds-radius-xl);
+  color: #ffffff;
+  isolation: isolate;
+  margin: 0 calc(clamp(var(--tds-space-5), 3vw, 36px) * -1) var(--tds-space-2);
+  overflow: hidden;
+  padding: 28px clamp(var(--tds-space-5), 3vw, 36px) 24px;
+  position: relative;
+}
+
 .top-section {
   background: var(--surface);
   border-bottom-left-radius: var(--tds-radius-xl);
@@ -317,28 +342,63 @@ button.full,
   padding: 28px clamp(var(--tds-space-5), 3vw, 36px) 24px;
 }
 
-.hero-band h2,
-.top-section h2 {
-  color: var(--text);
+.fund-eyebrow {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.68);
+  display: flex;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  gap: 10px;
+  letter-spacing: 0.12em;
+  margin-bottom: 13px;
+  text-transform: uppercase;
+}
+
+.fund-eyebrow span:first-child {
+  background: #ffffff;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  padding: 4px 9px;
+}
+
+.fund-eyebrow span:last-child {
+  border-left: 1px solid rgba(255, 255, 255, 0.24);
+  padding-left: 10px;
+}
+
+.hero-band h2 {
+  color: #ffffff;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: var(--tds-title-md);
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: -0.03em;
   line-height: 1.22;
   margin: 0 0 var(--tds-space-2);
   max-width: 640px;
 }
 
-.hero-band p,
-.top-section p {
-  color: var(--muted);
+.hero-band p {
+  color: rgba(255, 255, 255, 0.72);
   font-size: var(--tds-text-md);
   margin: 0;
   max-width: 680px;
 }
 
+.top-section h2 {
+  color: var(--text);
+  font-size: var(--tds-title-md);
+  margin: 0 0 var(--tds-space-2);
+}
+
+.top-section p {
+  color: var(--muted);
+  margin: 0;
+}
+
 .hero-back-link {
   align-items: center;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.68);
   display: inline-flex;
   font-size: var(--tds-text-sm);
   font-weight: 800;
@@ -350,7 +410,7 @@ button.full,
 }
 
 .hero-back-link:hover {
-  color: var(--accent-dark);
+  color: #ffffff;
   text-decoration: underline;
 }
 
@@ -363,6 +423,16 @@ button.full,
 
 .hero-actions .button {
   border-radius: var(--tds-radius-md);
+}
+
+.hero-actions .button.secondary {
+  background: rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.hero-actions .button.secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .home-shell .hero-band {
@@ -916,7 +986,7 @@ button.full,
 
 .pagination-button:hover {
   background: var(--accent-soft);
-  border-color: #c9e2ff;
+  border-color: #d2d3e1;
   color: var(--accent-dark);
   text-decoration: none;
 }
@@ -980,8 +1050,8 @@ button.full,
 }
 
 .rate-pill.down {
-  background: var(--accent-soft);
-  color: var(--accent-dark);
+  background: var(--chart-down-soft);
+  color: var(--chart-down);
 }
 
 .rate-pill.flat {
@@ -1100,8 +1170,8 @@ button.full,
 
 .candle.down line,
 .candle.down .candle-body {
-  fill: var(--accent);
-  stroke: var(--accent);
+  fill: var(--chart-down);
+  stroke: var(--chart-down);
 }
 
 .sparkline-chart {
@@ -1131,7 +1201,7 @@ button.full,
 
 .sparkline-path.down,
 .sparkline-dot.down {
-  stroke: var(--accent);
+  stroke: var(--chart-down);
 }
 
 .sparkline-dot {
@@ -1252,7 +1322,7 @@ button.full,
 }
 
 .tds-composition-legend-row.clickable:focus-visible {
-  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.28);
+  box-shadow: 0 0 0 3px rgba(91, 80, 230, 0.28);
   outline: none;
 }
 
@@ -2484,7 +2554,7 @@ button.terms-modal-close {
   background: var(--accent-soft);
   border: 0;
   border-radius: var(--tds-radius-lg);
-  color: #174ea6;
+  color: #4338ca;
   display: flex;
   gap: var(--tds-space-2);
   padding: var(--tds-space-3) var(--tds-space-4);
@@ -2613,7 +2683,7 @@ button.tds-toast-close:hover {
 }
 
 .dividend-calendar-month.has-dividend {
-  border-color: rgba(49, 130, 246, 0.22);
+  border-color: rgba(91, 80, 230, 0.22);
   box-shadow: 0 1px 2px rgba(25, 31, 40, 0.03);
 }
 
@@ -2844,7 +2914,7 @@ button.roadmap-today-button {
 button.roadmap-filter:hover,
 button.roadmap-navigation-button:hover,
 button.roadmap-today-button:hover {
-  background: #f2f4f6;
+  background: #f3f3fa;
   color: var(--text);
 }
 
@@ -2867,7 +2937,7 @@ button.roadmap-filter.is-active {
 }
 
 .roadmap-filter.is-active .roadmap-filter-count {
-  background: rgba(49, 130, 246, 0.14);
+  background: rgba(91, 80, 230, 0.14);
 }
 
 button.roadmap-today-button {
@@ -2985,14 +3055,14 @@ button.roadmap-today-button {
 }
 
 .roadmap-pin:hover {
-  border-color: #b8d4fb;
+  border-color: #c9c5ff;
   box-shadow: 0 8px 24px rgba(25, 31, 40, 0.1);
   transform: translateY(-2px);
 }
 
 .roadmap-pin:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(91, 80, 230, 0.2);
 }
 
 .roadmap-pin-link {
@@ -3091,7 +3161,7 @@ button.roadmap-pin-more {
 
 button.roadmap-pin-more:hover {
   background: var(--accent-soft);
-  border-color: #b8d4fb;
+  border-color: #c9c5ff;
 }
 
 .roadmap-node {
@@ -3126,7 +3196,7 @@ button.roadmap-pin-more:hover {
 .roadmap-stop.is-today .roadmap-node-core {
   background: var(--accent);
   border-color: #ffffff;
-  box-shadow: 0 0 0 5px rgba(49, 130, 246, 0.18);
+  box-shadow: 0 0 0 5px rgba(91, 80, 230, 0.18);
   height: 18px;
   width: 18px;
 }
@@ -3388,7 +3458,7 @@ button.roadmap-editor-add-button {
 }
 
 .roadmap-disclosure-card:hover {
-  border-color: #b8d4fb;
+  border-color: #c9c5ff;
   box-shadow: 0 5px 16px rgba(25, 31, 40, 0.07);
   transform: translateY(-1px);
 }
@@ -3562,7 +3632,7 @@ button.roadmap-editor-pin {
 
 button.roadmap-editor-pin:hover {
   background: var(--surface);
-  border-color: #b8d4fb;
+  border-color: #c9c5ff;
   border-left-color: var(--accent);
 }
 
@@ -3583,7 +3653,7 @@ button.roadmap-editor-pin.roadmap-pin--cancelled {
 }
 
 button.roadmap-editor-pin--selected {
-  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.18);
+  box-shadow: 0 0 0 3px rgba(91, 80, 230, 0.18);
 }
 
 .roadmap-editor-pin-topline {
@@ -3622,7 +3692,7 @@ button.roadmap-editor-pin-more {
 
 button.roadmap-editor-pin-more:hover {
   background: var(--accent-soft);
-  border-color: #b8d4fb;
+  border-color: #c9c5ff;
 }
 
 .roadmap-editor-stop .roadmap-node::after {
@@ -3641,7 +3711,7 @@ button.roadmap-editor-pin-more:hover {
 .roadmap-editor-stop--today .roadmap-node::after {
   background: var(--accent);
   border-color: #ffffff;
-  box-shadow: 0 0 0 5px rgba(49, 130, 246, 0.18);
+  box-shadow: 0 0 0 5px rgba(91, 80, 230, 0.18);
   height: 18px;
   width: 18px;
 }
@@ -4053,6 +4123,20 @@ button.ghost.danger {
 
   .brand p {
     display: none;
+  }
+
+  .brand-mark {
+    flex-basis: 44px;
+    width: 44px;
+  }
+
+  .brand-name-full {
+    display: none;
+  }
+
+  .brand-name-compact {
+    display: inline;
+    white-space: nowrap;
   }
 
   .nav-actions .button.secondary {

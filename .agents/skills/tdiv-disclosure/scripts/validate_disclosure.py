@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical checks for Korean T-ETF notice/disclosure drafts."""
+"""Mechanical checks for Korean TDIV notice/disclosure drafts."""
 
 from __future__ import annotations
 
@@ -88,7 +88,7 @@ def check(text: str) -> tuple[list[str], list[str]]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate a Korean T-ETF notice/disclosure draft.")
+    parser = argparse.ArgumentParser(description="Validate a Korean TDIV notice/disclosure draft.")
     parser.add_argument("path", nargs="?", help="Draft file path. Reads stdin when omitted.")
     args = parser.parse_args()
 
