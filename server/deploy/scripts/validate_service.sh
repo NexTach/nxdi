@@ -32,3 +32,5 @@ wait_for_url() {
 
 wait_for_url "NXDI container" "http://127.0.0.1:10104/health"
 wait_for_url "NXDI Nginx route" "http://127.0.0.1/nxdi-api/health" "kimtaeeun.site"
+
+"${SCRIPT_DIR}/cleanup_docker.sh" post-deploy

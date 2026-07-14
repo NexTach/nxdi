@@ -20,6 +20,11 @@ permissions:
     mode: "0644"
     type:
       - file
+  - object: /
+    pattern: "runtime.env"
+    mode: "0600"
+    type:
+      - file
   - object: deploy/scripts
     pattern: "*.sh"
     mode: "0755"

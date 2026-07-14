@@ -98,3 +98,4 @@ if ! "$NGINX_BIN" -t; then
 fi
 
 "$NGINX_BIN" -s reload
+rm -f "$backup"
