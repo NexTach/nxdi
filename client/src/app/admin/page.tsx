@@ -170,6 +170,9 @@ export default async function AdminPage() {
       settlementStatus: settlement.status
     }))
   );
+  const distributionReceiptRevision = capitalLedger.distributionReceipts
+    .map((receipt) => `${receipt.id}:${receipt.reversedAt ?? "active"}`)
+    .join("|");
   const dividendRecordsBySymbol = new Map(
     dividendRecords.map((record) => [record.symbol.toUpperCase(), record])
   );
@@ -767,6 +770,7 @@ export default async function AdminPage() {
           intents={dividendAllocationIntents}
           withdrawals={dividendAllocationWithdrawals}
           monthlyInvestorDividendCapRate={policy.monthlyInvestorDividendCapRate}
+          receiptSummaryRevision={distributionReceiptRevision}
           totalMarketValueKrw={portfolio.totalMarketValueKrw}
         />
       </Panel>

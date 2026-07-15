@@ -1492,10 +1492,15 @@ button.full,
 }
 
 .dividend-allocation-controls {
-  align-items: end;
+  align-items: start;
   display: grid;
   gap: var(--tds-space-3);
   grid-template-columns: minmax(280px, 1fr) minmax(220px, 320px);
+}
+
+.dividend-allocation-controls input,
+.dividend-allocation-controls .tds-select-control {
+  height: var(--tds-control-md);
 }
 
 .dividend-allocation-controls select {

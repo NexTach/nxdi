@@ -148,6 +148,20 @@ function prismaCode(error: unknown) {
 }
 
 export async function registerAdminRoutes(app: FastifyInstance) {
+  app.get("/api/admin/dividends/receipts/summary", async (request, reply) => {
+    if (!admin(request)) return reply.code(403).send({ error: "관리자 권한이 필요합니다." });
+    const parsed = z.object({
+      dividendMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    }).strict().safeParse(request.query);
+    if (!parsed.success) return reply.code(400).send({ error: "배당 지급월을 확인해 주세요." });
+
+    reply.header("Cache-Control", "no-store");
+    return {
+      dividendMonth: parsed.data.dividendMonth,
+      ...(await readUnderlyingDistributionMonthTotal(parsed.data.dividendMonth))
+    };
+  });
+
   app.post("/api/admin/status", async (request, reply) => {
     if (!admin(request)) return rejectAdminForm(reply);
     const parsed = z.object({
