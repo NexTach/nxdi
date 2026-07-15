@@ -104,10 +104,9 @@ export default async function IntentsPage() {
         description="투자 의향과 출금 의향을 각각 제출할 수 있습니다. 제출된 내용은 관리자가 검토한 뒤 상태를 변경합니다."
       />
 
-      <Grid columns={4} className="mt-16">
+      <Grid columns={3} className="mt-16">
         <Metric label="내 수락 투자 의향 잔액" value={formatKrw(withdrawalReference.acceptedNetInvestmentIntentKrw)} />
         <Metric label="대기 중 출금 의향" value={formatKrw(withdrawalReference.pendingWithdrawalIntentKrw)} />
-        <Metric label="의향 상태" value="비구속적" />
         <Metric label="추가 출금 의향 참고상한" value={formatKrw(withdrawalReference.maxRequestIntentKrw)} />
       </Grid>
 
