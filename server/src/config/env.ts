@@ -5,6 +5,11 @@ const optionalString = z.preprocess(
   z.string().trim().optional()
 );
 
+const dataEncryptionKeySchema = z.string().trim().refine((value) => {
+  const decoded = Buffer.from(value, "base64");
+  return decoded.length === 32 && decoded.toString("base64") === value;
+}, "must be canonical base64 encoding of exactly 32 bytes");
+
 const environmentSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -14,6 +19,7 @@ const environmentSchema = z
     PUBLIC_APP_URL: z.string().url(),
     DATABASE_URL: z.string().url(),
     APP_SESSION_SECRET: z.string().min(32),
+    DATA_ENCRYPTION_KEY_BASE64: dataEncryptionKeySchema,
     ADMIN_EMAILS: optionalString,
     ADMIN_EMAIL: optionalString,
     CRON_SECRET: optionalString,

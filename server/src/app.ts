@@ -91,7 +91,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
     const candidateStatus = typeof error === "object" && error !== null && "statusCode" in error
       ? Number(error.statusCode)
       : undefined;
-    const statusCode = candidateStatus && candidateStatus >= 400 && candidateStatus < 500
+    const statusCode = candidateStatus && candidateStatus >= 400 && candidateStatus < 600
       ? candidateStatus
       : 500;
     if (statusCode >= 500) request.log.error({ err: error }, "Request failed");

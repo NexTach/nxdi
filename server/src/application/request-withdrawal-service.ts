@@ -1,4 +1,4 @@
-import { withdrawalLimitFromPrincipal } from "../domain/withdrawal-limit.js";
+import { withdrawalIntentReferenceFromAmounts } from "../domain/withdrawal-limit.js";
 
 export type WithdrawalRequestInput = {
   userId: string;
@@ -13,9 +13,9 @@ export type WithdrawalRequestInput = {
 };
 
 export interface WithdrawalTransaction {
-  acceptedInvestmentPrincipal(): Promise<number>;
-  acceptedWithdrawalAmount(): Promise<number>;
-  pendingWithdrawalAmount(): Promise<number>;
+  acceptedInvestmentIntentAmount(): Promise<number>;
+  acceptedWithdrawalIntentAmount(): Promise<number>;
+  pendingWithdrawalIntentAmount(): Promise<number>;
   save(input: WithdrawalRequestInput): Promise<unknown>;
 }
 
@@ -29,20 +29,22 @@ export interface WithdrawalRepository {
 export class RequestWithdrawalService {
   constructor(private readonly repository: WithdrawalRepository) {}
 
-  execute(input: WithdrawalRequestInput, drawdownRate: number) {
+  execute(input: WithdrawalRequestInput) {
     return this.repository.withUserTransaction(input.userId, async (transaction) => {
       const [invested, withdrawn, pending] = await Promise.all([
-        transaction.acceptedInvestmentPrincipal(),
-        transaction.acceptedWithdrawalAmount(),
-        transaction.pendingWithdrawalAmount()
+        transaction.acceptedInvestmentIntentAmount(),
+        transaction.acceptedWithdrawalIntentAmount(),
+        transaction.pendingWithdrawalIntentAmount()
       ]);
-      const principal = Math.max(invested - withdrawn, 0);
-      const limit = withdrawalLimitFromPrincipal(principal, drawdownRate, pending);
-      if (principal <= 0 || input.amountKrw > limit.maxAmountKrw) {
-        return { status: "limit_exceeded" as const, limit };
+      const reference = withdrawalIntentReferenceFromAmounts(
+        Math.max(invested - withdrawn, 0),
+        pending
+      );
+      if (reference.acceptedNetInvestmentIntentKrw <= 0 || input.amountKrw > reference.maxRequestIntentKrw) {
+        return { status: "limit_exceeded" as const, reference };
       }
       const intent = await transaction.save(input);
-      return { status: "created" as const, limit, intent };
+      return { status: "created" as const, reference, intent };
     });
   }
 }

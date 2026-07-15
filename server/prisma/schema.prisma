@@ -131,19 +131,24 @@ model DisclosureTrade {
 }
 
 model InvestmentIntent {
-  id                   String   @id @default(cuid())
-  userId               String
-  userName             String
-  userEmail            String
-  amountKrw            Int
-  depositorName        String
-  contact              String
-  guardianConfirmed    Boolean  @default(false)
-  dividendPolicyAgreed Boolean  @default(false)
-  status               String   @default("PENDING")
-  note                 String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  userId                 String
+  userName               String
+  userEmail              String
+  amountKrw              Int
+  depositorName          String
+  contact                String
+  guardianConfirmed      Boolean   @default(false)
+  dividendPolicyAgreed   Boolean   @default(false)
+  productDocumentVersion String?   @map("product_document_version") @db.VarChar(32)
+  productDocumentHash    String?   @map("product_document_hash") @db.Char(64)
+  dividendPolicyVersion  String?   @map("dividend_policy_version") @db.VarChar(32)
+  dividendPolicyHash     String?   @map("dividend_policy_hash") @db.Char(64)
+  agreedAt               DateTime? @map("agreed_at")
+  status                 String    @default("PENDING")
+  note                   String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -151,21 +156,252 @@ model InvestmentIntent {
 }
 
 model WithdrawalIntent {
-  id            String   @id @default(cuid())
-  userId        String
-  userName      String
-  userEmail     String
-  amountKrw     Int
-  bankName      String
-  accountNumber String
-  accountHolder String
-  contact       String
-  status        String   @default("PENDING")
-  note          String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  userId                 String
+  userName               String
+  userEmail              String
+  amountKrw              Int
+  bankName               String
+  accountNumber          String    @db.VarChar(255)
+  accountHolder          String
+  contact                String
+  productDocumentVersion String?   @map("product_document_version") @db.VarChar(32)
+  productDocumentHash    String?   @map("product_document_hash") @db.Char(64)
+  agreedAt               DateTime? @map("agreed_at")
+  status                 String    @default("PENDING")
+  note                   String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   @@index([userId])
   @@index([status])
   @@map("tb_withdrawal_intents")
+}
+
+model InvestorComplianceProfile {
+  userId                 String    @id @map("user_id")
+  userName               String    @map("user_name")
+  userEmail              String    @map("user_email")
+  realNameVerifiedAt     DateTime? @map("real_name_verified_at")
+  bankAccountVerifiedAt  DateTime? @map("bank_account_verified_at")
+  suitabilityCompletedAt DateTime? @map("suitability_completed_at")
+  amlClearedAt           DateTime? @map("aml_cleared_at")
+  sanctionsCheckedAt     DateTime? @map("sanctions_checked_at")
+  guardianVerifiedAt     DateTime? @map("guardian_verified_at")
+  riskGrade              String?   @map("risk_grade") @db.VarChar(20)
+  expiresAt              DateTime  @map("expires_at")
+  note                   String?   @db.VarChar(500)
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  @@index([expiresAt], map: "idx_compliance_profiles_expiry")
+  @@map("tb_investor_compliance_profiles")
+}
+
+model InvestorCapitalSource {
+  id                  String                          @id @default(cuid())
+  referenceKey        String                          @unique @map("reference_key") @db.VarChar(191)
+  sourceType          String                          @map("source_type") @db.VarChar(32)
+  sourceIntentId      String?                         @unique @map("source_intent_id")
+  contractReference   String?                         @unique @map("contract_reference") @db.VarChar(120)
+  contractVersion     String?                         @map("contract_version") @db.VarChar(32)
+  depositReference    String?                         @unique @map("deposit_reference") @db.VarChar(120)
+  userId              String                          @map("user_id")
+  userName            String                          @map("user_name")
+  userEmail           String                          @map("user_email")
+  contractedAmountKrw Int?                            @map("contracted_amount_krw")
+  amountKrw           Int                             @map("amount_krw")
+  contractedAt        DateTime?                       @map("contracted_at")
+  receivedAt          DateTime                        @map("received_at")
+  availableAt         DateTime                        @map("available_at")
+  note                String?                         @db.VarChar(500)
+  deployments         CapitalDeployment[]
+  returns             CapitalSourceReturn[]
+  distribution        InvestorDistributionAllocation?
+  createdAt           DateTime                        @default(now()) @map("created_at")
+  updatedAt           DateTime                        @updatedAt @map("updated_at")
+
+  @@index([userId, availableAt], map: "idx_capital_sources_user_available")
+  @@index([sourceType, availableAt], map: "idx_capital_sources_type_available")
+  @@map("tb_investor_capital_sources")
+}
+
+model PortfolioTradeExecution {
+  id                   String              @id @default(cuid())
+  symbol               String              @db.VarChar(20)
+  side                 String              @db.VarChar(8)
+  currency             String              @db.VarChar(3)
+  quantity             Float
+  orderPrice           Float               @map("order_price")
+  exchangeRate         Float?              @map("exchange_rate")
+  grossAmountKrw       Int                 @map("gross_amount_krw")
+  feeKrw               Int                 @default(0) @map("fee_krw")
+  taxKrw               Int                 @default(0) @map("tax_krw")
+  cashAmountKrw        Int                 @map("cash_amount_krw")
+  investorDeployedKrw  Int                 @default(0) @map("investor_deployed_krw")
+  nonInvestorFundedKrw Int                 @default(0) @map("non_investor_funded_krw")
+  executedAt           DateTime            @map("executed_at")
+  deployments          CapitalDeployment[]
+  createdAt            DateTime            @default(now()) @map("created_at")
+
+  @@index([symbol, executedAt], map: "idx_trade_executions_symbol_time")
+  @@index([executedAt], map: "idx_trade_executions_time")
+  @@map("tb_portfolio_trade_executions")
+}
+
+model CapitalDeployment {
+  id               String                  @id @default(cuid())
+  sourceId         String                  @map("source_id")
+  source           InvestorCapitalSource   @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  tradeExecutionId String                  @map("trade_execution_id")
+  tradeExecution   PortfolioTradeExecution @relation(fields: [tradeExecutionId], references: [id], onDelete: Restrict)
+  userId           String                  @map("user_id")
+  amountKrw        Int                     @map("amount_krw")
+  deployedAt       DateTime                @map("deployed_at")
+  createdAt        DateTime                @default(now()) @map("created_at")
+
+  @@unique([sourceId, tradeExecutionId], map: "uq_deployment_source_trade")
+  @@index([userId, deployedAt], map: "idx_deployments_user_time")
+  @@index([tradeExecutionId], map: "idx_deployments_trade")
+  @@map("tb_capital_deployments")
+}
+
+model CapitalSourceReturn {
+  id         String                @id @default(cuid())
+  sourceId   String                @map("source_id")
+  source     InvestorCapitalSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  amountKrw  Int                   @map("amount_krw")
+  returnedAt DateTime              @map("returned_at")
+  reason     String                @db.VarChar(160)
+  createdAt  DateTime              @default(now()) @map("created_at")
+
+  @@index([sourceId, returnedAt], map: "idx_capital_returns_source_time")
+  @@map("tb_capital_source_returns")
+}
+
+model PortfolioCashEntry {
+  id           String   @id @default(cuid())
+  referenceKey String   @unique @map("reference_key") @db.VarChar(191)
+  entryType    String   @map("entry_type") @db.VarChar(40)
+  amountKrw    Int      @map("amount_krw")
+  occurredAt   DateTime @map("occurred_at")
+  memo         String?  @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([occurredAt], map: "idx_cash_entries_time")
+  @@index([entryType, occurredAt], map: "idx_cash_entries_type_time")
+  @@map("tb_portfolio_cash_entries")
+}
+
+model UnderlyingDistributionReceipt {
+  id                 String                                 @id @default(cuid())
+  referenceKey       String                                 @unique @map("reference_key") @db.VarChar(191)
+  symbol             String                                 @db.VarChar(20)
+  currency           String                                 @db.VarChar(3)
+  grossAmountNative  Float                                  @map("gross_amount_native")
+  exchangeRate       Float?                                 @map("exchange_rate")
+  grossAmountKrw     Int                                    @map("gross_amount_krw")
+  foreignTaxKrw      Int                                    @default(0) @map("foreign_tax_krw")
+  brokerageFeeKrw    Int                                    @default(0) @map("brokerage_fee_krw")
+  fxCostKrw          Int                                    @default(0) @map("fx_cost_krw")
+  netAmountKrw       Int                                    @map("net_amount_krw")
+  receivedAt         DateTime                               @map("received_at")
+  statementReference String                                 @map("statement_reference") @db.VarChar(120)
+  note               String?                                @db.VarChar(500)
+  reversal           UnderlyingDistributionReceiptReversal?
+  createdAt          DateTime                               @default(now()) @map("created_at")
+
+  @@index([receivedAt], map: "idx_distribution_receipts_time")
+  @@index([symbol, receivedAt], map: "idx_distribution_receipts_symbol_time")
+  @@map("tb_underlying_distribution_receipts")
+}
+
+model UnderlyingDistributionReceiptReversal {
+  id         String                        @id @default(cuid())
+  receiptId  String                        @unique @map("receipt_id")
+  receipt    UnderlyingDistributionReceipt @relation(fields: [receiptId], references: [id], onDelete: Restrict)
+  reason     String                        @db.VarChar(500)
+  reversedAt DateTime                      @map("reversed_at")
+  createdAt  DateTime                      @default(now()) @map("created_at")
+
+  @@index([reversedAt], map: "idx_distribution_receipt_reversals_time")
+  @@map("tb_underlying_distribution_receipt_reversals")
+}
+
+model InvestorWithdrawalSettlement {
+  id                    String   @id @default(cuid())
+  withdrawalIntentId    String?  @unique @map("withdrawal_intent_id")
+  instructionReference  String   @unique @map("instruction_reference") @db.VarChar(120)
+  instructionSignedAt   DateTime @map("instruction_signed_at")
+  payoutReference       String   @unique @map("payout_reference") @db.VarChar(120)
+  userId                String   @map("user_id")
+  userName              String   @map("user_name")
+  userEmail             String   @map("user_email")
+  principalReductionKrw Int      @map("principal_reduction_krw")
+  investorLossRate      Float    @map("investor_loss_rate")
+  investorLossKrw       Int      @map("investor_loss_krw")
+  payableKrw            Int      @map("payable_krw")
+  feeKrw                Int      @default(0) @map("fee_krw")
+  taxKrw                Int      @default(0) @map("tax_krw")
+  paidKrw               Int      @map("paid_krw")
+  settledAt             DateTime @map("settled_at")
+  note                  String?  @db.VarChar(500)
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@index([userId, settledAt], map: "idx_withdrawal_settlements_user_time")
+  @@index([settledAt], map: "idx_withdrawal_settlements_time")
+  @@map("tb_investor_withdrawal_settlements")
+}
+
+model MonthlyDistributionSettlement {
+  dividendMonth           String                           @id @map("dividend_month") @db.VarChar(7)
+  actualDividendKrw       Int                              @map("actual_dividend_krw")
+  portfolioNetAssetsKrw   Int                              @map("portfolio_net_assets_krw")
+  investorPrincipalKrw    Int                              @map("investor_principal_krw")
+  companyPrincipalKrw     Int                              @map("company_principal_krw")
+  investorBaseDividendKrw Int                              @map("investor_base_dividend_krw")
+  companyTransferredKrw   Int                              @map("company_transferred_krw")
+  managementFeeKrw        Int                              @map("management_fee_krw")
+  cashDistributionKrw     Int                              @map("cash_distribution_krw")
+  reinvestmentCreditKrw   Int                              @map("reinvestment_credit_krw")
+  companyRetainedKrw      Int                              @map("company_retained_krw")
+  roundingCarryKrw        Int                              @default(0) @map("rounding_carry_krw")
+  withholdingRate         Float                            @map("withholding_rate")
+  status                  String                           @default("CALCULATED") @db.VarChar(20)
+  calculatedAt            DateTime                         @map("calculated_at")
+  finalizedAt             DateTime?                        @map("finalized_at")
+  allocations             InvestorDistributionAllocation[]
+  createdAt               DateTime                         @default(now()) @map("created_at")
+  updatedAt               DateTime                         @updatedAt @map("updated_at")
+
+  @@index([calculatedAt], map: "idx_distribution_settlements_time")
+  @@map("tb_monthly_distribution_settlements")
+}
+
+model InvestorDistributionAllocation {
+  id                      String                        @id @default(cuid())
+  dividendMonth           String                        @map("dividend_month") @db.VarChar(7)
+  settlement              MonthlyDistributionSettlement @relation(fields: [dividendMonth], references: [dividendMonth], onDelete: Cascade)
+  userId                  String                        @map("user_id")
+  userName                String                        @map("user_name")
+  userEmail               String                        @map("user_email")
+  principalKrw            Int                           @map("principal_krw")
+  managementFeeKrw        Int                           @map("management_fee_krw")
+  cashDistributionKrw     Int                           @map("cash_distribution_krw")
+  reinvestmentCreditKrw   Int                           @map("reinvestment_credit_krw")
+  withholdingTaxKrw       Int                           @default(0) @map("withholding_tax_krw")
+  cashPayableKrw          Int                           @map("cash_payable_krw")
+  payoutStatus            String                        @default("PENDING") @map("payout_status") @db.VarChar(20)
+  payoutReference         String?                       @unique @map("payout_reference") @db.VarChar(120)
+  taxRemittanceReference  String?                       @unique @map("tax_remittance_reference") @db.VarChar(120)
+  paidAt                  DateTime?                     @map("paid_at")
+  lastPayoutFailureAt     DateTime?                     @map("last_payout_failure_at")
+  lastPayoutFailureReason String?                       @map("last_payout_failure_reason") @db.VarChar(500)
+  capitalSourceId         String?                       @unique @map("capital_source_id")
+  capitalSource           InvestorCapitalSource?        @relation(fields: [capitalSourceId], references: [id], onDelete: SetNull)
+  createdAt               DateTime                      @default(now()) @map("created_at")
+
+  @@unique([dividendMonth, userId], map: "uq_distribution_allocations_month_user")
+  @@index([userId, dividendMonth], map: "idx_distribution_allocations_user_month")
+  @@map("tb_investor_distribution_allocations")
 }

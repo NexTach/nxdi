@@ -26,7 +26,7 @@ function repository(input: {
 }
 
 describe("UpdateIntentStatusService", () => {
-  describe("given accepted withdrawals backed by two accepted investments", () => {
+  describe("given accepted withdrawal intentions backed by two accepted investment intentions", () => {
     describe("when an admin tries to reject one investment below the withdrawn amount", () => {
       it("then rejects the transition without updating the intent", async () => {
         const { fake, updates } = repository({
@@ -45,7 +45,7 @@ describe("UpdateIntentStatusService", () => {
     });
   });
 
-  describe("given accepted withdrawals close to the accepted investment principal", () => {
+  describe("given accepted withdrawal intentions close to the accepted investment intention amount", () => {
     describe("when an admin accepts another withdrawal beyond that principal", () => {
       it("then rejects the transition without updating the intent", async () => {
         const { fake, updates } = repository({
@@ -64,7 +64,7 @@ describe("UpdateIntentStatusService", () => {
     });
   });
 
-  describe("given a pending investment that increases available principal", () => {
+  describe("given a pending investment intention that increases the remaining intention reference", () => {
     describe("when an admin accepts it without violating the invariant", () => {
       it("then updates the intent once", async () => {
         const { fake, updates } = repository({
@@ -82,4 +82,5 @@ describe("UpdateIntentStatusService", () => {
       });
     });
   });
+
 });

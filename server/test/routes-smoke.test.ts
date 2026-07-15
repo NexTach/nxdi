@@ -167,11 +167,13 @@ describe("Fastify route smoke tests", () => {
               exchangeRate: 1380,
               exchangeRateFetchedAt: new Date().toISOString(),
               exchangeRateSource: "test",
+              securitiesMarketValueKrw: 0,
+              cashBalanceKrw: 0,
               totalMarketValueKrw: 0,
               dailySnapshots: [],
               holdings: []
             },
-            withdrawalLimit: { principalKrw: 0, pendingWithdrawalKrw: 0, drawdownRate: 0, maxAmountKrw: 0 },
+            withdrawalReference: { acceptedNetInvestmentIntentKrw: 0, pendingWithdrawalIntentKrw: 0, maxRequestIntentKrw: 0 },
             policy: productPolicyDto()
           };
         }) as ReadModels["intents"];

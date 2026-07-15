@@ -17,8 +17,11 @@ import {
   PRODUCT_MIN_INVESTMENT_KRW,
   productPolicyDto
 } from "../domain/product-policy.js";
-import { withdrawalLimitForUser } from "../domain/withdrawal-limit.js";
+import {
+  withdrawalIntentReferenceForUser
+} from "../domain/withdrawal-limit.js";
 import { readDisclosure, readDisclosures } from "../infrastructure/disclosures.js";
+import { readCapitalLedgerOverview } from "../infrastructure/capital-ledger.js";
 import {
   forecastDividend,
   getDividendRecord,
@@ -34,7 +37,7 @@ import {
   readRoadmapEvents,
   roadmapHorizonEndDate
 } from "../infrastructure/roadmap.js";
-import { readAcceptedNetInvestmentPrincipal, readStore, readStoreForUser } from "../infrastructure/store.js";
+import { readAcceptedNetInvestmentIntentAmount, readStore, readStoreForUser } from "../infrastructure/store.js";
 
 function chartRecord(entries: Array<readonly [string, MarketChart | null]>) {
   return Object.fromEntries(entries) as Record<string, MarketChart | null>;
@@ -232,9 +235,9 @@ export async function simulationReadModel(requestedAmount: number) {
     PRODUCT_MAX_INVESTMENT_KRW,
     Math.max(PRODUCT_MIN_INVESTMENT_KRW, Number.isFinite(requestedAmount) ? requestedAmount : 100_000)
   );
-  const [portfolio, currentInvestorPrincipalKrw] = await Promise.all([
+  const [portfolio, acceptedNetInvestmentIntentKrw] = await Promise.all([
     getManualPortfolioOverview(),
-    readAcceptedNetInvestmentPrincipal()
+    readAcceptedNetInvestmentIntentAmount()
   ]);
   const forecast = await forecastDividend(portfolio, amount);
   const annualPortfolioDividendYield =
@@ -245,7 +248,7 @@ export async function simulationReadModel(requestedAmount: number) {
     ? calculateExpectedInvestorDividend({
         investmentKrw: amount,
         currentPortfolioMarketValueKrw: portfolio.totalMarketValueKrw,
-        currentInvestorPrincipalKrw,
+        currentInvestorPrincipalKrw: acceptedNetInvestmentIntentKrw,
         annualPortfolioDividendYield
       })
     : undefined;
@@ -266,10 +269,10 @@ export async function simulationReadModel(requestedAmount: number) {
 }
 
 export async function intentsReadModel(userId: string) {
-  const [store, portfolio] = await Promise.all([readStoreForUser(userId), getManualPortfolioOverview()]);
+  const store = await readStoreForUser(userId);
   return {
     store,
-    withdrawalLimit: withdrawalLimitForUser(store, portfolio, userId),
+    withdrawalReference: withdrawalIntentReferenceForUser(store, userId),
     policy: productPolicyDto()
   };
 }
@@ -277,13 +280,14 @@ export async function intentsReadModel(userId: string) {
 export async function adminDashboardReadModel() {
   const roadmapToday = kstDateKey();
   const roadmapHorizon = roadmapHorizonEndDate(roadmapToday);
-  const [store, portfolio, dividendRecords, monthlyDividendRecords, disclosures, roadmapEvents] = await Promise.all([
+  const [store, portfolio, dividendRecords, monthlyDividendRecords, disclosures, roadmapEvents, capitalLedger] = await Promise.all([
     readStore(),
     getManualPortfolioOverview(),
     readDividendRecords(),
     readMonthlyDividendRecords(),
     readDisclosures(),
-    readRoadmapEvents({ through: roadmapHorizon })
+    readRoadmapEvents({ through: roadmapHorizon }),
+    readCapitalLedgerOverview()
   ]);
   const dividendAllocationIntents = store.investmentIntents
     .filter((intent) => intent.status === "ACCEPTED")
@@ -294,6 +298,7 @@ export async function adminDashboardReadModel() {
       }
       return {
         id: intent.id,
+        userId: intent.userId,
         userName: intent.userName,
         userEmail: intent.userEmail,
         amountKrw: intent.amountKrw,
@@ -302,6 +307,14 @@ export async function adminDashboardReadModel() {
         eligibleFromMonth
       };
     });
+  const dividendAllocationWithdrawals = store.withdrawalIntents
+    .filter((intent) => intent.status === "ACCEPTED")
+    .map((intent) => ({
+      id: intent.id,
+      userId: intent.userId,
+      amountKrw: intent.amountKrw,
+      acceptedAt: intent.updatedAt
+    }));
   return {
     store,
     portfolio,
@@ -312,6 +325,8 @@ export async function adminDashboardReadModel() {
     roadmapToday,
     roadmapHorizon,
     dividendAllocationIntents,
+    dividendAllocationWithdrawals,
+    capitalLedger,
     policy: productPolicyDto()
   };
 }

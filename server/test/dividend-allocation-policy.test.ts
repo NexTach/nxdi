@@ -18,8 +18,9 @@ describe("DividendAllocationPolicy", () => {
         });
         assert.equal(result.investorBaseDividendKrw, 120);
         assert.equal(result.companyTransferredDividendKrw, 176);
-        assert.equal(result.investorDistributionPoolKrw, 296);
-        assert.equal(result.allocationKrw, 148);
+        assert.equal(result.managementFeeKrw, 14.8);
+        assert.equal(result.investorDistributionPoolKrw, 281.2);
+        assert.equal(result.allocationKrw, 140.6);
       });
     });
   });
@@ -34,6 +35,29 @@ describe("DividendAllocationPolicy", () => {
         });
         assert.ok(result.expectedAnnualPayoutRate !== undefined);
         assert.ok(result.expectedAnnualPayoutRate <= PRODUCT_ANNUAL_INVESTOR_DIVIDEND_CAP_RATE);
+      });
+    });
+
+    describe("when investor entitlement exceeds the monthly cash payout cap", () => {
+      it("then credits the excess to investor reinvestment instead of company retained income", () => {
+        const result = calculateDividendAllocation({
+          actualDividendKrw: 20_000,
+          selectedInvestmentKrw: 1_000_000,
+          investorPrincipalKrw: 1_000_000,
+          totalMarketValueKrw: 1_250_000
+        }) as unknown as Record<string, number>;
+
+        assert.equal(result.investorBaseDividendKrw, 16_000);
+        assert.equal(result.managementFeeKrw, 800);
+        assert.equal(result.investorDistributionPoolKrw, 15_000);
+        assert.equal(result.investorReinvestmentPoolKrw, 200);
+        assert.equal(result.companyRetainedDividendKrw, 4_800);
+        assert.equal(
+          result.investorDistributionPoolKrw +
+            result.investorReinvestmentPoolKrw +
+            result.companyRetainedDividendKrw,
+          result.actualDividendKrw
+        );
       });
     });
   });

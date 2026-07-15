@@ -8,13 +8,17 @@ import { fetchUsdKrwExchangeRate } from "./exchange-rate.js";
 import { fetchMarketQuote } from "./market-data.js";
 import { withMysqlNamedLock } from "./mysql-named-lock.js";
 import { prisma } from "./prisma.js";
+import { portfolioCashBalance, recordPortfolioTradeExecution } from "./capital-ledger.js";
 
 const SNAPSHOT_TIMEZONE_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DAILY_SNAPSHOT_LIMIT = 370;
 
 export function normalizeManualPortfolioStore(store: ManualPortfolioStore): ManualPortfolioStore {
-  const exchangeRate = Number(store.exchangeRate) || 1380;
+  const exchangeRate = Number(store.exchangeRate);
+  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
+    throw new Error("Portfolio exchange rate is unavailable");
+  }
   const holdings = store.holdings.map((holding) => {
     const marketValue = holding.quantity * holding.lastPrice;
     const priceProfitLossRate =
@@ -218,6 +222,15 @@ export type PortfolioMarketPriceRefresh = {
   }>;
 };
 
+export class PortfolioValuationUnavailableError extends Error {
+  readonly statusCode = 503;
+
+  constructor(readonly symbols: string[]) {
+    super(`Verified market prices unavailable: ${symbols.join(", ")}`);
+    this.name = "PortfolioValuationUnavailableError";
+  }
+}
+
 export async function refreshManualPortfolioMarketPrices(): Promise<PortfolioMarketPriceRefresh> {
   const holdings = await prisma.portfolioHolding.findMany({ orderBy: { symbol: "asc" } });
   const results = await mapWithConcurrency(
@@ -283,6 +296,11 @@ export async function refreshManualPortfolioMarketPrices(): Promise<PortfolioMar
 
 export async function refreshPortfolioMarketSnapshot() {
   const marketPriceRefresh = await refreshManualPortfolioMarketPrices();
+  if (marketPriceRefresh.skipped.length > 0) {
+    throw new PortfolioValuationUnavailableError(
+      marketPriceRefresh.skipped.map((item) => item.symbol)
+    );
+  }
   const portfolio = await getManualPortfolioOverview();
   const snapshotDate = portfolioSnapshotDate();
 
@@ -312,19 +330,83 @@ export async function finalizePreviousPortfolioDailySnapshot(date = new Date()) 
 }
 
 export async function getManualPortfolioOverview(): Promise<PortfolioOverview> {
-  const store = await readManualPortfolioStore();
-  const totalMarketValueKrw = store.holdings.reduce((sum, holding) => sum + holding.marketValueKrw, 0);
-  const dailySnapshots = await readPortfolioDailySnapshots();
+  const [store, dailySnapshots, cashBalanceKrw] = await Promise.all([
+    readManualPortfolioStore(),
+    readPortfolioDailySnapshots(),
+    portfolioCashBalance()
+  ]);
+  const securitiesMarketValueKrw = store.holdings.reduce((sum, holding) => sum + holding.marketValueKrw, 0);
+  const totalMarketValueKrw = securitiesMarketValueKrw + cashBalanceKrw;
 
   return {
     source: "manual",
     fetchedAt: store.updatedAt,
     exchangeRate: store.exchangeRate,
-    exchangeRateFetchedAt: store.exchangeRateFetchedAt ?? new Date().toISOString(),
-    exchangeRateSource: store.exchangeRateSource ?? "fallback",
+    exchangeRateFetchedAt: store.exchangeRateFetchedAt ?? new Date(0).toISOString(),
+    exchangeRateSource: store.exchangeRateSource ?? "unavailable",
+    securitiesMarketValueKrw,
+    cashBalanceKrw,
     totalMarketValueKrw,
     dailySnapshots,
     holdings: store.holdings
+  };
+}
+
+export async function readMonthEndPortfolioNetAssets(dividendMonth: string) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(dividendMonth)) return undefined;
+  const year = Number(dividendMonth.slice(0, 4));
+  const month = Number(dividendMonth.slice(5, 7));
+  const nextMonth = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, "0")}`;
+  const lastCalendarDate = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  const monthEndBoundary = new Date(`${nextMonth}-01T00:00:00+09:00`);
+  const [snapshot, latestTradeRecord, latestCashRecord] = await Promise.all([
+    prisma.portfolioDailySnapshot.findFirst({
+      where: {
+        snapshotDate: { startsWith: dividendMonth },
+        closedAt: { not: null }
+      },
+      orderBy: { snapshotDate: "desc" }
+    }),
+    prisma.portfolioTradeExecution.findFirst({
+      where: { executedAt: { lt: monthEndBoundary } },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true }
+    }),
+    prisma.portfolioCashEntry.findFirst({
+      where: { occurredAt: { lt: monthEndBoundary } },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true }
+    })
+  ]);
+  if (!snapshot?.closedAt || snapshot.snapshotDate !== lastCalendarDate || snapshot.closedAt < monthEndBoundary) {
+    return undefined;
+  }
+  const latestLedgerWrite = [latestTradeRecord?.createdAt, latestCashRecord?.createdAt]
+    .filter((value): value is Date => Boolean(value))
+    .sort((left, right) => right.getTime() - left.getTime())[0];
+  if (latestLedgerWrite && snapshot.closedAt < latestLedgerWrite) return undefined;
+  return snapshot.closeTotalMarketValueKrw ?? snapshot.totalMarketValueKrw;
+}
+
+export async function readLatestClosedPortfolioNetAssets() {
+  const [snapshot, latestTrade, latestCashEntry] = await Promise.all([
+    prisma.portfolioDailySnapshot.findFirst({
+      where: { closedAt: { not: null } },
+      orderBy: { snapshotDate: "desc" }
+    }),
+    prisma.portfolioTradeExecution.findFirst({ orderBy: { createdAt: "desc" } }),
+    prisma.portfolioCashEntry.findFirst({ orderBy: { createdAt: "desc" } })
+  ]);
+  if (!snapshot) return undefined;
+  return {
+    snapshotDate: snapshot.snapshotDate,
+    netAssetsKrw: snapshot.closeTotalMarketValueKrw ?? snapshot.totalMarketValueKrw,
+    closedAt: snapshot.closedAt?.toISOString(),
+    coversAllTrades: Boolean(
+      snapshot.closedAt &&
+      (!latestTrade || snapshot.closedAt >= latestTrade.createdAt) &&
+      (!latestCashEntry || snapshot.closedAt >= latestCashEntry.createdAt)
+    )
   };
 }
 
@@ -343,41 +425,43 @@ async function writePortfolioDailySnapshot(portfolio: PortfolioOverview, snapsho
 export async function upsertManualHolding(input: Omit<Holding, "marketValue" | "marketValueKrw">) {
   const symbol = input.symbol.toUpperCase();
   const alias = input.alias?.trim();
-  const profitLossRate =
-    input.averagePurchasePrice && input.averagePurchasePrice > 0
-      ? (input.lastPrice - input.averagePurchasePrice) / input.averagePurchasePrice
-      : undefined;
   const locked = await withMysqlNamedLock(`nxdi:holding:${symbol}`, async () => {
-    await prisma.portfolioHolding.upsert({
-      where: { symbol },
-      create: {
+    const existing = await prisma.portfolioHolding.findUnique({ where: { symbol } });
+    if (existing) {
+      const profitLossRate = existing.averagePurchasePrice && existing.averagePurchasePrice > 0
+        ? (input.lastPrice - existing.averagePurchasePrice) / existing.averagePurchasePrice
+        : null;
+      await prisma.portfolioHolding.update({
+        where: { symbol },
+        data: {
+          name: input.name,
+          alias,
+          lastPrice: input.lastPrice,
+          profitLossRate,
+          riskLevel: input.riskLevel ?? null
+        }
+      });
+      return { status: "updated" as const };
+    }
+    await prisma.portfolioHolding.create({
+      data: {
         symbol,
         name: input.name,
         alias,
         marketCountry: input.marketCountry,
         currency: input.currency,
-        quantity: input.quantity,
+        quantity: 0,
         lastPrice: input.lastPrice,
-        averagePurchasePrice: input.averagePurchasePrice,
-        purchaseExchangeRate: input.purchaseExchangeRate,
-        profitLossRate,
-        riskLevel: input.riskLevel ?? null
-      },
-      update: {
-        name: input.name,
-        alias,
-        marketCountry: input.marketCountry,
-        currency: input.currency,
-        quantity: input.quantity,
-        lastPrice: input.lastPrice,
-        averagePurchasePrice: input.averagePurchasePrice,
-        purchaseExchangeRate: input.purchaseExchangeRate,
-        profitLossRate,
+        averagePurchasePrice: null,
+        purchaseExchangeRate: null,
+        profitLossRate: null,
         riskLevel: input.riskLevel ?? null
       }
     });
+    return { status: "created" as const };
   }, 5);
   if (!locked.acquired) throw new Error(`Could not acquire holding lock: ${symbol}`);
+  return locked.value;
 }
 
 export async function applyManualHoldingTrade(input: {
@@ -386,6 +470,9 @@ export async function applyManualHoldingTrade(input: {
   quantity: number;
   orderPrice: number;
   exchangeRate?: number;
+  feeKrw?: number;
+  taxKrw?: number;
+  executedAt?: string;
 }) {
   const symbol = input.symbol.toUpperCase();
   const service = new ApplyHoldingTradeService({
@@ -398,6 +485,9 @@ export async function applyManualHoldingTrade(input: {
         },
         delete: async () => {
           await transaction.portfolioHolding.delete({ where: { symbol } });
+        },
+        recordExecution: async (execution) => {
+          await recordPortfolioTradeExecution(transaction, execution);
         }
       });
     }, { isolationLevel: "Serializable" })
@@ -410,7 +500,11 @@ export async function applyManualHoldingTrade(input: {
 export async function deleteManualHolding(symbol: string) {
   const normalized = symbol.toUpperCase();
   const locked = await withMysqlNamedLock(`nxdi:holding:${normalized}`, async () => {
+    const holding = await prisma.portfolioHolding.findUnique({ where: { symbol: normalized } });
+    if (holding && holding.quantity > 0.0000001) return { status: "holding_not_empty" as const };
     await prisma.portfolioHolding.deleteMany({ where: { symbol: normalized } });
+    return { status: "deleted" as const };
   }, 5);
   if (!locked.acquired) throw new Error(`Could not acquire holding lock: ${normalized}`);
+  return locked.value;
 }

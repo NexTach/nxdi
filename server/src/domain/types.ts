@@ -29,7 +29,7 @@ export type AppUser = {
   userType: "student" | "alumni";
 };
 
-export type IntentStatus = "PENDING" | "ACCEPTED" | "REJECTED";
+export type IntentStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
 
 export type InvestmentIntent = {
   id: string;
@@ -42,6 +42,11 @@ export type InvestmentIntent = {
   contact: string;
   guardianConfirmed: boolean;
   dividendPolicyAgreed: boolean;
+  productDocumentVersion?: string;
+  productDocumentHash?: string;
+  dividendPolicyVersion?: string;
+  dividendPolicyHash?: string;
+  agreedAt?: string;
   status: IntentStatus;
   note?: string;
   createdAt: string;
@@ -59,6 +64,9 @@ export type WithdrawalIntent = {
   accountNumber: string;
   accountHolder: string;
   contact: string;
+  productDocumentVersion?: string;
+  productDocumentHash?: string;
+  agreedAt?: string;
   status: IntentStatus;
   note?: string;
   createdAt: string;
@@ -102,6 +110,8 @@ export type PortfolioOverview = {
   exchangeRate: number;
   exchangeRateFetchedAt: string;
   exchangeRateSource: string;
+  securitiesMarketValueKrw: number;
+  cashBalanceKrw: number;
   totalMarketValueKrw: number;
   dailySnapshots: PortfolioDailySnapshot[];
   holdings: Holding[];

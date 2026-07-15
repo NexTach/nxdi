@@ -17,6 +17,7 @@
     "verify": "npm run lint && npm run typecheck && npm test && npm run build",
     "prisma:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:encrypt-sensitive": "tsx scripts/encrypt-sensitive-fields.ts",
     "db:backfill-roadmap": "tsx scripts/backfill-roadmap-events.ts"
   },
   "dependencies": {

@@ -1,17 +1,35 @@
+import type { FastifyRequest } from "fastify";
 import { loadEnvironment } from "./config/env.js";
 import { buildApp } from "./app.js";
 import { disconnectPrisma } from "./infrastructure/prisma.js";
 import { startScheduler } from "./scheduler/index.js";
 
-try {
-  process.loadEnvFile();
-} catch (error) {
-  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+for (const path of [".env.local", ".env"]) {
+  try {
+    process.loadEnvFile(path);
+    break;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
 }
 
 const environment = loadEnvironment();
 process.env.TZ = environment.TZ;
-const app = await buildApp({ logger: true });
+const app = await buildApp({
+  logger: {
+    serializers: {
+      req(request: FastifyRequest) {
+        return {
+          method: request.method,
+          url: request.url?.split("?", 1)[0],
+          host: request.headers.host,
+          remoteAddress: request.ip,
+          remotePort: request.socket.remotePort
+        };
+      }
+    }
+  }
+});
 await app.listen({ host: environment.HOST, port: environment.PORT });
 const scheduler = startScheduler(app.log);
 

@@ -2,9 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requestUser } from "../auth/session.js";
 import { PRODUCT_MAX_INVESTMENT_KRW, PRODUCT_MIN_INVESTMENT_KRW } from "../domain/product-policy.js";
-import { portfolioDrawdownRate } from "../domain/withdrawal-limit.js";
-import { getManualPortfolioOverview } from "../infrastructure/portfolio-store.js";
-import { createInvestmentIntent, createWithdrawalIntentSafely } from "../infrastructure/store.js";
+import {
+  createInvestmentIntent,
+  createWithdrawalIntentSafely,
+  withdrawNonbindingIntent
+} from "../infrastructure/store.js";
 import { errorFlash, redirectWithFlash, successFlash } from "../http/flash.js";
 
 const investmentSchema = z.object({
@@ -34,6 +36,24 @@ function requireUser(request: Parameters<typeof requestUser>[0], reply: Paramete
 }
 
 export async function registerIntentRoutes(app: FastifyInstance) {
+  app.post("/api/intents/cancel", async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const parsed = z.object({
+      type: z.enum(["INVESTMENT", "WITHDRAWAL"]),
+      id: z.string().cuid()
+    }).safeParse(request.body);
+    if (!parsed.success) return redirectWithFlash(reply, "/intents", errorFlash("invalid_intent_cancel"));
+    const result = await withdrawNonbindingIntent({ ...parsed.data, userId: user.id });
+    if (result.status === "downstream_exists") {
+      return redirectWithFlash(reply, "/intents", errorFlash("intent_cancel_downstream"));
+    }
+    if (result.status !== "withdrawn") {
+      return redirectWithFlash(reply, "/intents", errorFlash("invalid_intent_cancel"));
+    }
+    return redirectWithFlash(reply, "/intents", successFlash("intent-withdrawn", "비구속적 의향을 철회했습니다"));
+  });
+
   app.post("/api/intents/invest", async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
@@ -64,7 +84,6 @@ export async function registerIntentRoutes(app: FastifyInstance) {
       const terms = parsed.error.issues.some((item) => item.path[0] === "termsAgreed");
       return redirectWithFlash(reply, "/intents", errorFlash(terms ? "terms_required" : "invalid_withdrawal"));
     }
-    const portfolio = await getManualPortfolioOverview();
     const result = await createWithdrawalIntentSafely({
       userId: user.id,
       userName: user.name,
@@ -75,7 +94,7 @@ export async function registerIntentRoutes(app: FastifyInstance) {
       accountHolder: parsed.data.accountHolder,
       contact: parsed.data.contact,
       note: parsed.data.note
-    }, portfolioDrawdownRate(portfolio));
+    });
     if (result.status === "limit_exceeded") {
       return redirectWithFlash(reply, "/intents", errorFlash("withdrawal_limit"));
     }
