@@ -23,19 +23,15 @@ import {
   Top
 } from "@/app/components/tds";
 import { getMyIntents } from "@/lib/api";
-import { formatDateTime, formatKrw, formatNumber, statusLabel } from "@/lib/format";
+import { formatDateTime, formatKrw, statusLabel } from "@/lib/format";
 import { FLASH_COOKIE_NAME, getFlashMessages } from "@/lib/flash";
 import { TermsAgreement } from "./TermsAgreement";
 import { WithdrawalAmountSlider } from "./WithdrawalAmountSlider";
 
 function statusClass(status: string): "accepted" | "rejected" | "pending" {
   if (status === "ACCEPTED") return "accepted";
-  if (status === "REJECTED") return "rejected";
+  if (status === "REJECTED" || status === "WITHDRAWN") return "rejected";
   return "pending";
-}
-
-function formatPercent(value: number) {
-  return `${formatNumber(value * 100, 2)}%`;
 }
 
 async function readProductDescription() {
@@ -63,6 +59,10 @@ function IntentGate({ messages }: { messages: ToastMessage[] }) {
         backLink={{ href: "/" }}
       />
 
+      <Notice>
+        이 화면의 제출과 수락·거절 상태는 의향 확인 기능이며 계약 체결, 입금 승인, 실제 투자원금, 분배금 또는 출금 지급의 법적 권리를 만들지 않습니다.
+      </Notice>
+
       <CtaPanel className="max-w-gate">
         <h2>
           <LockKeyhole size={18} /> DataGSM 인증 필요
@@ -79,7 +79,7 @@ function IntentGate({ messages }: { messages: ToastMessage[] }) {
 export default async function IntentsPage() {
   const [data, flashMessages] = await Promise.all([getMyIntents(), getFlashMessages()]);
   if (!data) return <IntentGate messages={flashMessages} />;
-  const { user, store, withdrawalLimit, policy } = data;
+  const { user, store, withdrawalReference, policy } = data;
 
   const [termsMarkdown, dividendPolicyMarkdown] = await Promise.all([
     readProductDescription(),
@@ -88,7 +88,7 @@ export default async function IntentsPage() {
   const myInvestments = store.investmentIntents;
   const myWithdrawals = store.withdrawalIntents;
   const myIntents = [...myInvestments, ...myWithdrawals];
-  const canRequestWithdrawal = withdrawalLimit.maxAmountKrw > 0;
+  const canRequestWithdrawal = withdrawalReference.maxRequestIntentKrw > 0;
 
   return (
     <AppShell>
@@ -105,10 +105,10 @@ export default async function IntentsPage() {
       />
 
       <Grid columns={4} className="mt-16">
-        <Metric label="내 잔여 승인 원금" value={formatKrw(withdrawalLimit.principalKrw)} />
-        <Metric label="대기 중 출금" value={formatKrw(withdrawalLimit.pendingWithdrawalKrw)} />
-        <Metric label="포트폴리오 하락률 반영" value={formatPercent(withdrawalLimit.drawdownRate)} />
-        <Metric label="출금 가능 최대 상한" value={formatKrw(withdrawalLimit.maxAmountKrw)} />
+        <Metric label="내 수락 투자 의향 잔액" value={formatKrw(withdrawalReference.acceptedNetInvestmentIntentKrw)} />
+        <Metric label="대기 중 출금 의향" value={formatKrw(withdrawalReference.pendingWithdrawalIntentKrw)} />
+        <Metric label="의향 상태" value="비구속적" />
+        <Metric label="추가 출금 의향 참고상한" value={formatKrw(withdrawalReference.maxRequestIntentKrw)} />
       </Grid>
 
       <SectionHeader title="의향서 제출" description="연락처에는 전화번호 또는 이메일을 입력해주세요." />
@@ -164,15 +164,15 @@ export default async function IntentsPage() {
             <ArrowDownToLine size={18} /> 출금 의향서
           </h2>
           <p className="lede">
-            잔여 승인 원금이 있을 때만 제출할 수 있으며, 승인·대기 출금과 포트폴리오 하락률을 반영한 상한 안에서 선택합니다.
+            수락된 투자 의향액에서 수락·대기 출금 의향액을 뺀 참고 범위 안에서 제출합니다. 이 값은 실제 투자원금이나 지급 가능액이 아닙니다.
           </p>
           <ApiMutationForm action="/api/intents/withdraw" className="form" method="post" resetOnSuccess>
             <WithdrawalAmountSlider
               disabled={!canRequestWithdrawal}
-              maxAmountKrw={withdrawalLimit.maxAmountKrw}
+              maxAmountKrw={withdrawalReference.maxRequestIntentKrw}
             />
             {!canRequestWithdrawal ? (
-              <Notice className="compact-notice">승인·대기 출금과 포트폴리오 하락률을 반영한 출금 가능 금액이 없습니다.</Notice>
+              <Notice className="compact-notice">현재 상태값을 기준으로 추가 출금 의향을 입력할 참고 잔액이 없습니다.</Notice>
             ) : null}
             <Field htmlFor="bankName" label="은행">
               <input id="bankName" name="bankName" required disabled={!canRequestWithdrawal} />
@@ -216,6 +216,13 @@ export default async function IntentsPage() {
                 {formatKrw(intent.amountKrw)}
                 <RowMeta>
                   <Badge tone={statusClass(intent.status)}>{statusLabel(intent.status)}</Badge>
+                  {intent.status === "PENDING" || intent.status === "ACCEPTED" ? (
+                    <ApiMutationForm action="/api/intents/cancel" method="post">
+                      <input name="type" type="hidden" value={intent.type} />
+                      <input name="id" type="hidden" value={intent.id} />
+                      <button className="ghost" type="submit">의향 철회</button>
+                    </ApiMutationForm>
+                  ) : null}
                 </RowMeta>
               </>
             }

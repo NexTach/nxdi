@@ -54,6 +54,11 @@ type TradeFormState = {
   exchangeRate: string;
 };
 
+function currentKstDateTimeLocal() {
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return now.toISOString().slice(0, 16);
+}
+
 function profitLossRate(lastPrice?: number, averagePurchasePrice?: number) {
   if (!lastPrice || !averagePurchasePrice) return null;
   return ((lastPrice - averagePurchasePrice) / averagePurchasePrice) * 100;
@@ -191,7 +196,7 @@ export function AdminHoldingForm({
     const currentQuantity = quantity ?? 0;
     const currentAveragePrice = averagePurchasePrice && averagePurchasePrice > 0 ? averagePurchasePrice : lastPrice;
 
-    if (!tradeQuantity || !tradePrice || !currentQuantity) {
+    if (!tradeQuantity || !tradePrice || (tradeForm.side === "SELL" && !currentQuantity)) {
       return {
         isValid: false,
         quantity: undefined,
@@ -552,7 +557,7 @@ export function AdminHoldingForm({
                 <option value="KRW">KRW</option>
               </TdsSelect>
             </Field>
-            <Field htmlFor={`quantity-${symbol ?? "new"}`} label="수량">
+            <Field htmlFor={`quantity-${symbol ?? "new"}`} label={symbol ? "수량(체결 원장 전용)" : "초기 수량(0으로 등록)"}>
               <input
                 id={`quantity-${symbol ?? "new"}`}
                 name="quantity"
@@ -560,6 +565,7 @@ export function AdminHoldingForm({
                 step="0.000001"
                 min="0"
                 value={form.quantity}
+                disabled={Boolean(symbol)}
                 onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))}
                 required
               />
@@ -576,7 +582,7 @@ export function AdminHoldingForm({
                 required
               />
             </Field>
-            <Field htmlFor={`avg-${symbol ?? "new"}`} label={`평단 (${currencySymbol(form.currency)})`}>
+            <Field htmlFor={`avg-${symbol ?? "new"}`} label={`평단(체결 원장 전용, ${currencySymbol(form.currency)})`}>
               <FormattedNumberInput
                 allowDecimal
                 id={`avg-${symbol ?? "new"}`}
@@ -584,6 +590,7 @@ export function AdminHoldingForm({
                 step="0.000001"
                 min="0"
                 value={form.averagePurchasePrice}
+                disabled={Boolean(symbol)}
                 onValueChange={(value) => setForm((current) => ({ ...current, averagePurchasePrice: value }))}
                 required
               />
@@ -597,7 +604,7 @@ export function AdminHoldingForm({
                 min="500"
                 max="3000"
                 value={form.purchaseExchangeRate}
-                disabled={form.currency !== "USD"}
+                disabled={form.currency !== "USD" || Boolean(symbol)}
                 onValueChange={(value) => setForm((current) => ({ ...current, purchaseExchangeRate: value }))}
                 required={form.currency === "USD"}
               />
@@ -657,11 +664,36 @@ export function AdminHoldingForm({
                     step="0.01"
                     min="500"
                     max="3000"
-                    placeholder={currency === "USD" ? "예: 1,380.5" : "원화 거래는 입력하지 않음"}
+                    placeholder={currency === "USD" ? "증권사 실제 체결환율" : "원화 거래는 입력하지 않음"}
                     value={tradeForm.exchangeRate}
                     disabled={currency !== "USD"}
                     onValueChange={(value) => setTradeForm((current) => ({ ...current, exchangeRate: value }))}
-                    required={currency === "USD" && tradeForm.side === "BUY"}
+                    required={currency === "USD"}
+                  />
+                </Field>
+                <Field htmlFor={`trade-fee-${symbol}`} label="거래 수수료 (₩)">
+                  <FormattedNumberInput
+                    id={`trade-fee-${symbol}`}
+                    name="feeKrw"
+                    min="0"
+                    defaultValue="0"
+                  />
+                </Field>
+                <Field htmlFor={`trade-tax-${symbol}`} label="거래 세금 (₩)">
+                  <FormattedNumberInput
+                    id={`trade-tax-${symbol}`}
+                    name="taxKrw"
+                    min="0"
+                    defaultValue="0"
+                  />
+                </Field>
+                <Field htmlFor={`trade-executed-at-${symbol}`} label="실제 체결시각 (KST)">
+                  <input
+                    id={`trade-executed-at-${symbol}`}
+                    name="executedAt"
+                    type="datetime-local"
+                    defaultValue={currentKstDateTimeLocal()}
+                    required
                   />
                 </Field>
               </div>

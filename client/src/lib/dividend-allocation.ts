@@ -4,6 +4,7 @@ export type DividendAllocationInput = {
   investorPrincipalKrw: number;
   totalMarketValueKrw: number;
   companyDividendTransferRate: number;
+  managementFeeRate: number;
   monthlyInvestorDividendCapRate: number;
 };
 
@@ -27,6 +28,7 @@ export function calculateDividendAllocation(input: DividendAllocationInput) {
   const monthlyInvestorDividendCapRate = cappedRate(
     input.monthlyInvestorDividendCapRate
   );
+  const managementFeeRate = cappedRate(input.managementFeeRate);
 
   const companyPrincipalKrw = Math.max(totalMarketValueKrw - investorPrincipalKrw, 0);
   const dividendBaseKrw = investorPrincipalKrw + companyPrincipalKrw;
@@ -41,14 +43,26 @@ export function calculateDividendAllocation(input: DividendAllocationInput) {
     companyTransferLimitKrw,
     companyBaseDividendKrw
   );
-  const investorDistributionPoolKrw = Math.min(
+  const investorGrossEntitlementKrw = Math.min(
     investorBaseDividendKrw + companyTransferredDividendKrw,
+    actualDividendKrw
+  );
+  const managementFeeKrw = investorGrossEntitlementKrw * managementFeeRate;
+  const investorNetEntitlementKrw = Math.max(investorGrossEntitlementKrw - managementFeeKrw, 0);
+  const investorDistributionPoolKrw = Math.min(
+    investorNetEntitlementKrw,
     investorDividendCapKrw,
     actualDividendKrw
+  );
+  const investorReinvestmentPoolKrw = Math.max(
+    investorNetEntitlementKrw - investorDistributionPoolKrw,
+    0
   );
   const selectedInvestorWeight =
     investorPrincipalKrw > 0 ? Math.min(selectedInvestmentKrw / investorPrincipalKrw, 1) : 0;
   const allocationKrw = investorDistributionPoolKrw * selectedInvestorWeight;
+  const selectedInvestorReinvestmentKrw = investorReinvestmentPoolKrw * selectedInvestorWeight;
+  const selectedManagementFeeKrw = managementFeeKrw * selectedInvestorWeight;
 
   return {
     actualDividendKrw,
@@ -62,11 +76,21 @@ export function calculateDividendAllocation(input: DividendAllocationInput) {
     companyTransferNeedKrw,
     companyTransferLimitKrw,
     companyTransferredDividendKrw,
+    managementFeeRate,
+    investorGrossEntitlementKrw,
+    managementFeeKrw,
+    investorNetEntitlementKrw,
     monthlyInvestorDividendCapRate,
     investorDividendCapKrw,
     investorDistributionPoolKrw,
-    companyRetainedDividendKrw: Math.max(actualDividendKrw - investorDistributionPoolKrw, 0),
+    investorReinvestmentPoolKrw,
+    companyRetainedDividendKrw: Math.max(
+      actualDividendKrw - investorDistributionPoolKrw - investorReinvestmentPoolKrw,
+      0
+    ),
     selectedInvestorWeight,
-    allocationKrw
+    allocationKrw,
+    selectedInvestorReinvestmentKrw,
+    selectedManagementFeeKrw
   };
 }

@@ -383,7 +383,7 @@ function TradeEditor({
             id={`exchange-${trade.clientId}`}
             max="3000"
             min="500"
-            placeholder={trade.currency === "USD" ? "예: 1,380.5" : "원화 거래는 입력하지 않음"}
+            placeholder={trade.currency === "USD" ? "증권사 실제 체결환율" : "원화 거래는 입력하지 않음"}
             required={trade.currency === "USD"}
             step="0.01"
             value={trade.exchangeRate}

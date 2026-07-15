@@ -12,7 +12,7 @@ import type {
   MonthlyDividendRecord,
   PortfolioDividendSummary,
   PortfolioOverview,
-  WithdrawalLimit
+  WithdrawalIntentReference
 } from "./types";
 
 const DEFAULT_API_ORIGIN = "https://kimtaeeun.site/nxdi-api";
@@ -129,18 +129,140 @@ export type ProductPolicyDto = {
   minInvestmentKrw: number;
   maxInvestmentKrw: number;
   companyDividendTransferRate: number;
+  managementFeeRate: number;
   annualInvestorDividendCapRate: number;
   monthlyInvestorDividendCapRate: number;
 };
 
 export type DividendAllocationIntentDto = {
   id: string;
+  userId: string;
   userName: string;
   userEmail: string;
   amountKrw: number;
   createdAt: string;
   updatedAt: string;
   eligibleFromMonth: string;
+};
+
+export type DividendAllocationWithdrawalDto = {
+  id: string;
+  userId: string;
+  amountKrw: number;
+  acceptedAt: string;
+};
+
+export type CapitalSourceDto = {
+  id: string;
+  referenceKey: string;
+  sourceType: string;
+  sourceIntentId?: string;
+  contractReference?: string;
+  contractVersion?: string;
+  depositReference?: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  contractedAmountKrw?: number;
+  amountKrw: number;
+  deployedKrw: number;
+  returnedKrw: number;
+  availableKrw: number;
+  contractedAt?: string;
+  receivedAt: string;
+  availableAt: string;
+  note?: string;
+};
+
+export type InvestorCapitalAccountDto = {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  principalKrw: number;
+};
+
+export type InvestorComplianceProfileDto = {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  realNameVerifiedAt?: string;
+  bankAccountVerifiedAt?: string;
+  suitabilityCompletedAt?: string;
+  amlClearedAt?: string;
+  sanctionsCheckedAt?: string;
+  guardianVerifiedAt?: string;
+  riskGrade?: string;
+  expiresAt: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UnderlyingDistributionReceiptDto = {
+  id: string;
+  statementReference: string;
+  symbol: string;
+  currency: string;
+  grossAmountNative: number;
+  exchangeRate?: number;
+  grossAmountKrw: number;
+  foreignTaxKrw: number;
+  brokerageFeeKrw: number;
+  fxCostKrw: number;
+  netAmountKrw: number;
+  receivedAt: string;
+  note?: string;
+  reversedAt?: string;
+  reversalReason?: string;
+  createdAt: string;
+};
+
+export type CapitalLedgerOverviewDto = {
+  sources: CapitalSourceDto[];
+  investorAccounts: InvestorCapitalAccountDto[];
+  totalInvestorPrincipalKrw: number;
+  cashBalanceKrw: number;
+  withdrawals: Array<{
+    id: string;
+    withdrawalIntentId?: string;
+    userId: string;
+    userName: string;
+    principalReductionKrw: number;
+    investorLossKrw: number;
+    paidKrw: number;
+    settledAt: string;
+  }>;
+  distributions: Array<{
+    dividendMonth: string;
+    actualDividendKrw: number;
+    investorPrincipalKrw: number;
+    managementFeeKrw: number;
+    cashDistributionKrw: number;
+    reinvestmentCreditKrw: number;
+    companyRetainedKrw: number;
+    withholdingRate: number;
+    status: string;
+    calculatedAt: string;
+    finalizedAt?: string;
+    allocations: Array<{
+      id: string;
+      userId: string;
+      userName: string;
+      userEmail: string;
+      principalKrw: number;
+      managementFeeKrw: number;
+      cashDistributionKrw: number;
+      reinvestmentCreditKrw: number;
+      withholdingTaxKrw: number;
+      cashPayableKrw: number;
+      payoutStatus: string;
+      paidAt?: string;
+      lastPayoutFailureAt?: string;
+      lastPayoutFailureReason?: string;
+    }>;
+  }>;
+  complianceProfiles: InvestorComplianceProfileDto[];
+  distributionReceipts: UnderlyingDistributionReceiptDto[];
 };
 
 export type SimulationResponse = {
@@ -155,7 +277,7 @@ export type SimulationResponse = {
 export type IntentsResponse = {
   user: AppUser;
   store: AppStore;
-  withdrawalLimit: WithdrawalLimit;
+  withdrawalReference: WithdrawalIntentReference;
   policy: ProductPolicyDto;
 };
 
@@ -170,6 +292,8 @@ export type AdminDashboardResponse = {
   roadmapToday: string;
   roadmapHorizon: string;
   dividendAllocationIntents: DividendAllocationIntentDto[];
+  dividendAllocationWithdrawals: DividendAllocationWithdrawalDto[];
+  capitalLedger: CapitalLedgerOverviewDto;
   policy: ProductPolicyDto;
 };
 

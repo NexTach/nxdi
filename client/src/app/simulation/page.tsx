@@ -55,8 +55,8 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
       />
 
       <Top
-        title="투자 배당 시뮬레이션"
-        description="현재 포트폴리오 배당 전망에 상품의 배당 상한과 당사 몫 이전 정책을 적용해 예상 지급액을 계산합니다."
+        title="투자 의향 배당 시뮬레이션"
+        description="현재 구성종목과 수락된 의향 총액을 참고해 정책 적용 예상치를 계산합니다. 의향이나 계산값은 계약·원금·지급권을 만들지 않습니다."
         backLink={{ href: "/" }}
         actions={
           <ButtonLink href="#forecast-section">
@@ -65,7 +65,7 @@ export default async function SimulationPage({ searchParams }: SimulationPagePro
         }
       />
 
-      <SectionHeader title="정책 적용 예상 지급액" description="세금과 외부 비용을 차감하기 전의 가정값이며 실제 지급액은 실배당에 따라 달라집니다." />
+      <SectionHeader title="정책 적용 참고 예상액" description={`운용보수 ${formatPercent(policy.managementFeeRate)}를 반영하고 세금·외부 비용은 반영하지 않은 비구속적 가정값입니다.`} />
 
       <Grid columns={2}>
         <CtaPanel>

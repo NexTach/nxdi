@@ -1,6 +1,5 @@
 "use client";
 
-import { Save } from "lucide-react";
 import { ApiMutationForm } from "@/app/components/api-mutation-form";
 import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import { Field, InlineFields } from "@/app/components/tds";
@@ -28,21 +27,14 @@ export function MonthlyDividendRecordForm() {
             required
           />
         </Field>
-        <Field htmlFor="actual-dividend-amount" label="월 전체 실 배당금">
+        <Field htmlFor="actual-dividend-withholding-rate" label="적용 원천세율 (%)">
           <FormattedNumberInput
-            id="actual-dividend-amount"
+            allowDecimal
+            id="actual-dividend-withholding-rate"
             min="0"
-            name="actualDividendKrw"
-            placeholder="원화 금액"
-            required
-          />
-        </Field>
-        <Field htmlFor="actual-dividend-reference-value" label="기준 평가금액">
-          <FormattedNumberInput
-            id="actual-dividend-reference-value"
-            min="1"
-            name="referenceMarketValueKrw"
-            placeholder="수익률 기준 금액"
+            max="100"
+            name="withholdingRate"
+            placeholder="세무 확인 세율"
             required
           />
         </Field>
@@ -50,8 +42,7 @@ export function MonthlyDividendRecordForm() {
           <input id="actual-dividend-memo" maxLength={500} name="memo" placeholder="선택 입력" />
         </Field>
         <button className="secondary" type="submit">
-          <Save size={17} />
-          저장
+          원장 합계로 정산안 계산
         </button>
       </InlineFields>
     </ApiMutationForm>

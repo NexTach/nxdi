@@ -4,10 +4,12 @@ import { useMemo, useState } from "react";
 import { FormattedNumberInput } from "@/app/components/formatted-number-input";
 import { Field, MutedText, TdsSelect } from "@/app/components/tds";
 import { calculateDividendAllocation } from "@/lib/dividend-allocation";
+import { intentBasedDividendPrincipal } from "@/lib/dividend-principal";
 import { formatDateTime, formatKrw, formatNumber } from "@/lib/format";
 
 type DividendAllocationIntent = {
   id: string;
+  userId: string;
   userName: string;
   userEmail: string;
   amountKrw: number;
@@ -16,9 +18,18 @@ type DividendAllocationIntent = {
   eligibleFromMonth: string;
 };
 
+type DividendAllocationWithdrawal = {
+  id: string;
+  userId: string;
+  amountKrw: number;
+  acceptedAt: string;
+};
+
 type DividendAllocationCalculatorProps = {
   companyDividendTransferRate: number;
+  managementFeeRate: number;
   intents: DividendAllocationIntent[];
+  withdrawals: DividendAllocationWithdrawal[];
   defaultDividendMonth: string;
   monthlyInvestorDividendCapRate: number;
   totalMarketValueKrw: number;
@@ -36,7 +47,9 @@ function formatPercent(value: number) {
 
 export function DividendAllocationCalculator({
   companyDividendTransferRate,
+  managementFeeRate,
   intents,
+  withdrawals,
   defaultDividendMonth,
   monthlyInvestorDividendCapRate,
   totalMarketValueKrw
@@ -46,8 +59,8 @@ export function DividendAllocationCalculator({
   const [selectedIntentId, setSelectedIntentId] = useState(() => intents[0]?.id ?? "");
   const actualDividendKrw = parseInputAmount(actualDividend);
   const eligibleIntents = useMemo(
-    () => intents.filter((intent) => intent.eligibleFromMonth <= dividendMonth),
-    [dividendMonth, intents]
+    () => intentBasedDividendPrincipal(intents, withdrawals, dividendMonth),
+    [dividendMonth, intents, withdrawals]
   );
   const investorPrincipalKrw = eligibleIntents.reduce((sum, intent) => sum + intent.amountKrw, 0);
 
@@ -61,6 +74,7 @@ export function DividendAllocationCalculator({
     investorPrincipalKrw,
     totalMarketValueKrw,
     companyDividendTransferRate,
+    managementFeeRate,
     monthlyInvestorDividendCapRate
   });
   const canCalculate = investorPrincipalKrw > 0 && Boolean(selectedIntent);
@@ -75,7 +89,7 @@ export function DividendAllocationCalculator({
             type="month"
             value={dividendMonth}
           />
-          <p className="field-help">수락월의 다음 달부터 배당 대상 원금에 포함합니다.</p>
+          <p className="field-help">의향 수락월의 다음 달부터 포함하고, 수락된 출금 의향은 FIFO로 차감한 참고 계산입니다.</p>
         </Field>
         <Field htmlFor="dividend-allocation-intent" label="수락된 투자 의향서">
           <TdsSelect
@@ -105,7 +119,7 @@ export function DividendAllocationCalculator({
 
       <div className="dividend-allocation-summary" aria-label="배당 배분 요약">
         <div>
-          <span>투자자 원금 합계</span>
+          <span>의향 기반 가정원금 합계</span>
           <strong>{formatKrw(allocation.investorPrincipalKrw)}</strong>
         </div>
         <div>
@@ -121,8 +135,16 @@ export function DividendAllocationCalculator({
           <strong>{formatKrw(allocation.companyTransferredDividendKrw)}</strong>
         </div>
         <div>
+          <span>운용보수</span>
+          <strong>{formatKrw(allocation.managementFeeKrw)}</strong>
+        </div>
+        <div>
           <span>투자자 배분 대상</span>
           <strong>{formatKrw(allocation.investorDistributionPoolKrw)}</strong>
+        </div>
+        <div>
+          <span>배당 재투자금</span>
+          <strong>{formatKrw(allocation.investorReinvestmentPoolKrw)}</strong>
         </div>
         <div>
           <span>회사 보유 배당</span>
@@ -136,12 +158,16 @@ export function DividendAllocationCalculator({
           <span>지급액</span>
           <strong>{formatKrw(allocation.allocationKrw)}</strong>
         </div>
+        <div>
+          <span>선택 의향 재투자액</span>
+          <strong>{formatKrw(allocation.selectedInvestorReinvestmentKrw)}</strong>
+        </div>
       </div>
 
       {!canCalculate ? (
         <p className="dividend-allocation-empty">
           {investorPrincipalKrw <= 0
-            ? "선택한 지급월에 배당 대상이 되는 승인 원금이 없습니다."
+            ? "선택한 지급월에 참고 계산할 수락 투자 의향 잔액이 없습니다."
             : "배당 대상 투자 의향서가 없습니다."}
         </p>
       ) : (
@@ -163,9 +189,13 @@ export function DividendAllocationCalculator({
             </strong>
             <MutedText>
               상한 {formatPercent(allocation.monthlyInvestorDividendCapRate)} · 이전율{" "}
-              {formatPercent(allocation.companyDividendTransferRate)}
+              {formatPercent(allocation.companyDividendTransferRate)} · 보수율{" "}
+              {formatPercent(allocation.managementFeeRate)}
             </MutedText>
           </div>
+          <MutedText>
+            의향서의 수락은 계약 체결·입금 확인이 아닙니다. 이 결과는 연락 및 내부 검토용 참고치이며 실제 원금·분배금 확정에 사용할 수 없습니다.
+          </MutedText>
         </div>
       )}
     </div>

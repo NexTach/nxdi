@@ -35,5 +35,6 @@ export function formatDateTime(value: string) {
 export function statusLabel(status: string) {
   if (status === "ACCEPTED") return "수락";
   if (status === "REJECTED") return "거절";
+  if (status === "WITHDRAWN") return "철회";
   return "대기";
 }
