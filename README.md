@@ -1,6 +1,6 @@
-# NexTach Global Dividend Income
+# NexTach Global Dividend Income Fund
 
-**NXDI · 넥스태치 글로벌 배당 인컴**
+**NXDI · 넥스태치 글로벌 배당 인컴 펀드**
 
 글로벌 ETF와 개별 종목으로 구성한 인컴 포트폴리오의 운용 현황, 배당 정책과 공시를 공개합니다.
 

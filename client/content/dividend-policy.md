@@ -1,4 +1,4 @@
-# NexTach Global Dividend Income 배당 정책
+# NexTach Global Dividend Income Fund 배당 정책
 
 [작성일] 2026/07/18
 

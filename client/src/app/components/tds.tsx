@@ -99,7 +99,7 @@ export function Top({
     <section className={cx("hero-band", className)} id={id}>
       <div className="fund-eyebrow" aria-label={`${FUND_TICKER} fund identity`}>
         <span>{FUND_TICKER}</span>
-        <span>Global Dividend Income</span>
+        <span>{FUND_NAME}</span>
       </div>
       {backLink ? (
         <Link className="hero-back-link" href={backLink.href}>

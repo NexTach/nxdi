@@ -1,4 +1,4 @@
-# NexTach Global Dividend Income 상품 설명
+# NexTach Global Dividend Income Fund 상품 설명
 
 [작성일] 2026/07/18
 
