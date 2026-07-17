@@ -2728,19 +2728,15 @@ tbody tr:last-child td {
 .certificate-signature-image {
   height: auto;
   left: 0;
-  mix-blend-mode: multiply;
   position: absolute;
-  top: 50%;
-  transform: translate(-12.5mm, -50%);
-  width: 44mm;
+  top: 4.75mm;
+  width: 16mm;
 }
 
 .certificate-seal-image {
-  height: 13.5mm;
+  height: auto;
   left: 10.5mm;
-  opacity: 0.88;
   position: absolute;
-  rotate: -8deg;
   top: 1.2mm;
   width: 13.5mm;
 }

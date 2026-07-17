@@ -65,10 +65,12 @@ export default async function MonthlyDividendCertificatePage({ params }: Certifi
 
   const issuedOn = formatCertificateDate(new Date());
   const documentNumber = certificateNumber(record.dividendMonth, record.recordId);
+  const printFileNamePrefix =
+    `NXDI_운용수익_발생확인서_${record.dividendMonth.replace("-", "")}`;
 
   return (
     <main className="certificate-page">
-      <CertificatePrintActions />
+      <CertificatePrintActions printFileNamePrefix={printFileNamePrefix} />
 
       <article aria-labelledby="certificate-title" className="certificate-sheet">
         <header className="certificate-form-header">
@@ -171,16 +173,20 @@ export default async function MonthlyDividendCertificatePage({ params }: Certifi
               <Image
                 alt="김태은 서명"
                 className="certificate-signature-image"
-                height={114}
-                src="/certificate/kim-taeeun-signature.png"
-                width={294}
+                height={270}
+                priority
+                src="/certificate/kim-taeeun-signature-print.png"
+                unoptimized
+                width={666}
               />
               <Image
                 alt="김태은인 직인"
                 className="certificate-seal-image"
-                height={1254}
-                src="/certificate/kim-taeeun-official-seal-v2.png"
-                width={1254}
+                height={1308}
+                priority
+                src="/certificate/kim-taeeun-official-seal-print.png"
+                unoptimized
+                width={1262}
               />
             </span>
           </div>
