@@ -2145,6 +2145,63 @@ tbody tr:last-child td {
   width: min(880px, calc(100vw - 40px));
 }
 
+.holding-delete-confirmation-backdrop {
+  align-items: center;
+  background: rgba(17, 24, 39, 0.52);
+  display: grid;
+  inset: 0;
+  padding: var(--tds-space-5);
+  position: fixed;
+  z-index: 100;
+}
+
+.holding-delete-confirmation {
+  background: var(--surface);
+  border-radius: var(--tds-radius-lg);
+  box-shadow: 0 24px 70px rgba(25, 31, 40, 0.3), 0 4px 18px rgba(25, 31, 40, 0.1);
+  display: grid;
+  gap: var(--tds-space-4);
+  justify-self: center;
+  padding: var(--tds-space-5);
+  width: min(460px, calc(100vw - 40px));
+}
+
+.holding-delete-confirmation h3 {
+  font-size: var(--tds-title-sm);
+  margin: 0;
+}
+
+.holding-delete-confirmation header p {
+  color: var(--muted);
+  font-size: var(--tds-text-sm);
+  font-weight: 700;
+  margin: var(--tds-space-1) 0 0;
+}
+
+.holding-delete-warning {
+  background: var(--danger-soft);
+  border-radius: var(--tds-radius-md);
+  color: var(--danger);
+  font-size: var(--tds-text-sm);
+  font-weight: 700;
+  line-height: 1.6;
+  padding: var(--tds-space-3);
+}
+
+.holding-delete-confirmation-form {
+  display: flex;
+  gap: var(--tds-space-2);
+  justify-content: flex-end;
+}
+
+button.danger-confirm {
+  background: var(--danger);
+}
+
+button.danger-confirm:hover {
+  background: #c9363b;
+}
+
 .holding-modal-header {
   align-items: flex-start;
   border-bottom: 1px solid var(--line);

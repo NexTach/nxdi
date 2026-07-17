@@ -158,6 +158,7 @@ export function AdminHoldingForm({
   riskLevel
 }: AdminHoldingFormProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -287,6 +288,17 @@ export function AdminHoldingForm({
   }, []);
 
   useEffect(() => {
+    if (!isDeleteConfirmationOpen) return;
+
+    function closeDeleteConfirmation(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsDeleteConfirmationOpen(false);
+    }
+
+    window.addEventListener("keydown", closeDeleteConfirmation);
+    return () => window.removeEventListener("keydown", closeDeleteConfirmation);
+  }, [isDeleteConfirmationOpen]);
+
+  useEffect(() => {
     if (!isOpen) {
       setResults([]);
       setIsSearching(false);
@@ -346,6 +358,7 @@ export function AdminHoldingForm({
 
   function closeModal() {
     setIsOpen(false);
+    setIsDeleteConfirmationOpen(false);
     setQuery("");
     setResults([]);
     setIsSearching(false);
@@ -412,6 +425,7 @@ export function AdminHoldingForm({
 
   const modalTitle = symbol ? "운영 종목 수정" : "운영 종목 추가";
   const submitLabel = symbol ? "변경 저장" : "종목 추가";
+  const hasOpeningQuantity = !symbol && Boolean(positiveNumber(form.quantity));
 
   return (
     <div className="holding-modal-backdrop" role="presentation" onMouseDown={(event) => {
@@ -421,7 +435,11 @@ export function AdminHoldingForm({
         <header className="holding-modal-header">
           <div>
             <h3 id={`holding-modal-title-${symbol ?? "new"}`}>{modalTitle}</h3>
-            <p>{symbol ? stockPrimaryLabel({ symbol, name, alias, marketCountry, currency }) : "검색 결과를 선택하면 기본 정보가 채워집니다."}</p>
+            <p>
+              {symbol
+                ? `${stockPrimaryLabel({ symbol, name, alias, marketCountry, currency })} · 보유값은 아래 거래 적용으로 조정합니다.`
+                : "검색 결과를 선택하고 현재 초기 보유값을 입력합니다."}
+            </p>
           </div>
           <button aria-label="닫기" className="ghost holding-modal-close" type="button" onClick={closeModal}>
             <X size={18} />
@@ -434,49 +452,51 @@ export function AdminHoldingForm({
           method="post"
           onSuccess={closeModal}
         >
-          <div className="symbol-search">
-            <Field htmlFor={`search-${symbol ?? "new"}`} label="종목 검색">
-              <div className="search-control">
-                <input
-                  className={searchFailed ? "search-input-failed" : undefined}
-                  autoComplete="off"
-                  id={`search-${symbol ?? "new"}`}
-                  value={query}
-                  placeholder="종목명 또는 심볼"
-                  onChange={(event) => {
-                    clearSearchFailure();
-                    setQuery(event.target.value);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                    }
-                    if (event.key === "Escape") {
-                      closeModal();
-                    }
-                  }}
-                />
-                {isSearching ? <span className="search-status">검색 중</span> : null}
-                {!isSearching && searchFailed ? <span className="search-status failed">검색 실패</span> : null}
-              </div>
-            </Field>
-            {results.length > 0 ? (
-              <div className="search-results">
-                {results.map((result) => (
-                  <button
-                    className="search-result"
-                    key={`${result.source}-${result.symbol}`}
-                    type="button"
-                    onClick={() => void selectResult(result)}
-                  >
-                    <strong>{stockPrimaryLabel(result)}</strong>
-                    {stockSecondaryLabel(result) ? <span>{stockSecondaryLabel(result)}</span> : null}
-                    <em>{[marketLabel(result.marketCountry), result.exchange, result.currency].filter(Boolean).join(" · ")}</em>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          {!symbol ? (
+            <div className="symbol-search">
+              <Field htmlFor="search-new" label="종목 검색">
+                <div className="search-control">
+                  <input
+                    className={searchFailed ? "search-input-failed" : undefined}
+                    autoComplete="off"
+                    id="search-new"
+                    value={query}
+                    placeholder="종목명 또는 심볼"
+                    onChange={(event) => {
+                      clearSearchFailure();
+                      setQuery(event.target.value);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                      }
+                      if (event.key === "Escape") {
+                        closeModal();
+                      }
+                    }}
+                  />
+                  {isSearching ? <span className="search-status">검색 중</span> : null}
+                  {!isSearching && searchFailed ? <span className="search-status failed">검색 실패</span> : null}
+                </div>
+              </Field>
+              {results.length > 0 ? (
+                <div className="search-results">
+                  {results.map((result) => (
+                    <button
+                      className="search-result"
+                      key={`${result.source}-${result.symbol}`}
+                      type="button"
+                      onClick={() => void selectResult(result)}
+                    >
+                      <strong>{stockPrimaryLabel(result)}</strong>
+                      {stockSecondaryLabel(result) ? <span>{stockSecondaryLabel(result)}</span> : null}
+                      <em>{[marketLabel(result.marketCountry), result.exchange, result.currency].filter(Boolean).join(" · ")}</em>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="holding-modal-grid">
             <Field htmlFor={`symbol-${symbol ?? "new"}`} label="심볼">
@@ -484,6 +504,7 @@ export function AdminHoldingForm({
                 id={`symbol-${symbol ?? "new"}`}
                 name="symbol"
                 value={form.symbol}
+                readOnly={Boolean(symbol)}
                 onChange={(event) => setForm((current) => ({ ...current, symbol: event.target.value }))}
                 required
               />
@@ -524,10 +545,12 @@ export function AdminHoldingForm({
               </TdsSelect>
             </Field>
             <Field htmlFor={`market-${symbol ?? "new"}`} label="시장">
+              {symbol ? <input name="marketCountry" type="hidden" value={form.marketCountry} /> : null}
               <TdsSelect
                 id={`market-${symbol ?? "new"}`}
-                name="marketCountry"
+                name={symbol ? undefined : "marketCountry"}
                 value={form.marketCountry}
+                disabled={Boolean(symbol)}
                 onChange={(event) => {
                   const marketCountry = event.target.value as MarketCode;
                   setForm((current) => ({
@@ -545,10 +568,12 @@ export function AdminHoldingForm({
               </TdsSelect>
             </Field>
             <Field htmlFor={`currency-${symbol ?? "new"}`} label="통화">
+              {symbol ? <input name="currency" type="hidden" value={form.currency} /> : null}
               <TdsSelect
                 id={`currency-${symbol ?? "new"}`}
-                name="currency"
+                name={symbol ? undefined : "currency"}
                 value={form.currency}
+                disabled={Boolean(symbol)}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, currency: event.target.value as "KRW" | "USD" }))
                 }
@@ -557,7 +582,7 @@ export function AdminHoldingForm({
                 <option value="KRW">KRW</option>
               </TdsSelect>
             </Field>
-            <Field htmlFor={`quantity-${symbol ?? "new"}`} label={symbol ? "수량(체결 원장 전용)" : "초기 수량(0으로 등록)"}>
+            <Field htmlFor={`quantity-${symbol ?? "new"}`} label={symbol ? "보유 수량(거래로 변경)" : "초기 보유 수량"}>
               <input
                 id={`quantity-${symbol ?? "new"}`}
                 name="quantity"
@@ -582,7 +607,10 @@ export function AdminHoldingForm({
                 required
               />
             </Field>
-            <Field htmlFor={`avg-${symbol ?? "new"}`} label={`평단(체결 원장 전용, ${currencySymbol(form.currency)})`}>
+            <Field
+              htmlFor={`avg-${symbol ?? "new"}`}
+              label={`${symbol ? "평단(거래로 변경)" : "초기 평단"} (${currencySymbol(form.currency)})`}
+            >
               <FormattedNumberInput
                 allowDecimal
                 id={`avg-${symbol ?? "new"}`}
@@ -590,9 +618,9 @@ export function AdminHoldingForm({
                 step="0.000001"
                 min="0"
                 value={form.averagePurchasePrice}
-                disabled={Boolean(symbol)}
+                disabled={Boolean(symbol) || !hasOpeningQuantity}
                 onValueChange={(value) => setForm((current) => ({ ...current, averagePurchasePrice: value }))}
-                required
+                required={hasOpeningQuantity}
               />
             </Field>
             <Field htmlFor={`purchase-fx-${symbol ?? "new"}`} label="매입환율 (₩)">
@@ -604,9 +632,9 @@ export function AdminHoldingForm({
                 min="500"
                 max="3000"
                 value={form.purchaseExchangeRate}
-                disabled={form.currency !== "USD" || Boolean(symbol)}
+                disabled={form.currency !== "USD" || Boolean(symbol) || !hasOpeningQuantity}
                 onValueChange={(value) => setForm((current) => ({ ...current, purchaseExchangeRate: value }))}
-                required={form.currency === "USD"}
+                required={hasOpeningQuantity && form.currency === "USD"}
               />
             </Field>
           </div>
@@ -735,13 +763,9 @@ export function AdminHoldingForm({
             <div className="holding-modal-buttons">
               {symbol ? (
                 <button
-                  className="ghost"
-                  formAction="/api/admin/portfolio/delete"
-                  formMethod="post"
-                  formNoValidate
-                  name="symbol"
-                  type="submit"
-                  value={symbol}
+                  className="ghost danger"
+                  type="button"
+                  onClick={() => setIsDeleteConfirmationOpen(true)}
                 >
                   삭제
                 </button>
@@ -754,6 +778,45 @@ export function AdminHoldingForm({
           </footer>
         </ApiMutationForm>
       </section>
+      {symbol && isDeleteConfirmationOpen ? (
+        <div
+          className="holding-delete-confirmation-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsDeleteConfirmationOpen(false);
+          }}
+        >
+          <section
+            aria-labelledby={`holding-delete-title-${symbol}`}
+            aria-modal="true"
+            className="holding-delete-confirmation"
+            role="alertdialog"
+          >
+            <header>
+              <h3 id={`holding-delete-title-${symbol}`}>운영 종목을 삭제할까요?</h3>
+              <p>{stockPrimaryLabel({ symbol, name, alias, marketCountry, currency })}</p>
+            </header>
+            <div className="holding-delete-warning">
+              현재 보유 수량 {formatHoldingNumber(quantity)}주를 포함해 활성 포트폴리오에서 제거합니다.
+              기존 매수·매도 체결 이력은 감사 기록으로 유지됩니다.
+            </div>
+            <ApiMutationForm
+              action="/api/admin/portfolio/delete"
+              className="holding-delete-confirmation-form"
+              method="post"
+              onSuccess={closeModal}
+            >
+              <input name="symbol" type="hidden" value={symbol} />
+              <button className="secondary" type="button" onClick={() => setIsDeleteConfirmationOpen(false)}>
+                취소
+              </button>
+              <button className="danger-confirm" type="submit">
+                종목 삭제
+              </button>
+            </ApiMutationForm>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -85,6 +85,22 @@ const holdingSchema = z.object({
     (value) => value === "" ? undefined : value,
     z.coerce.number().min(500).max(3000).optional()
   )
+}).superRefine((holding, context) => {
+  if (holding.quantity <= 0) return;
+  if (holding.averagePurchasePrice === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["averagePurchasePrice"],
+      message: "required for an opening position"
+    });
+  }
+  if (holding.currency === "USD" && holding.purchaseExchangeRate === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["purchaseExchangeRate"],
+      message: "required for a USD opening position"
+    });
+  }
 });
 
 function normalizeHoldingSymbol(symbol: string, currency: "KRW" | "USD", market: string) {
@@ -168,7 +184,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       reply,
       "portfolio-updated",
       result.status === "created"
-        ? "종목 메타데이터가 등록되었습니다. 수량은 실제 매수 체결로만 반영됩니다"
+        ? "종목과 초기 보유값이 등록되었습니다"
         : "종목 메타데이터가 저장되었습니다"
     );
   });
@@ -203,8 +219,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     if (!admin(request)) return rejectAdminForm(reply);
     const parsed = z.object({ symbol: z.string().trim().min(1).max(20) }).safeParse(formBody(request));
     if (!parsed.success) return adminError(reply, "invalid_delete");
-    const result = await deleteManualHolding(parsed.data.symbol);
-    if (result.status === "holding_not_empty") return adminError(reply, "holding_not_empty");
+    await deleteManualHolding(parsed.data.symbol);
     return adminSuccess(reply, "portfolio-deleted", "포트폴리오 종목이 삭제되었습니다");
   });
 

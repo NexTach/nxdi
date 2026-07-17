@@ -12,7 +12,6 @@ const errors: Record<string, string> = {
   admin_required: "관리자 권한이 필요합니다",
   trade_not_found: "거래를 적용할 종목을 찾을 수 없습니다",
   trade_insufficient: "매도 수량이 현재 보유 수량보다 큽니다",
-  holding_not_empty: "보유 수량이 남은 종목은 직접 삭제할 수 없습니다. 실제 매도 체결로 수량을 먼저 정리해주세요",
   risk_unclassified: "상대 위험등급이 지정되지 않은 종목의 신규 매수를 중단했습니다",
   invalid_exchange_rate: "환율 입력값을 다시 확인해주세요",
   status_principal_invariant: "완료된 출금 의향 합계는 완료된 투자 의향 합계를 초과할 수 없습니다",

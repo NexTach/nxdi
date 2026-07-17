@@ -5,6 +5,7 @@ import {
   type HoldingTradeExecution
 } from "../application/apply-holding-trade-service.js";
 import { PortfolioSnapshotService } from "../application/portfolio-snapshot-service.js";
+import { holdingInitialState } from "../domain/holding-initial-state.js";
 import { holdingCostBasisKrw } from "../domain/portfolio-math.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { summarizePortfolioDividend } from "./dividends.js";
@@ -400,19 +401,7 @@ export async function upsertManualHolding(input: Omit<Holding, "marketValue" | "
       return { status: "updated" as const };
     }
     await prisma.portfolioHolding.create({
-      data: {
-        symbol,
-        name: input.name,
-        alias,
-        marketCountry: input.marketCountry,
-        currency: input.currency,
-        quantity: 0,
-        lastPrice: input.lastPrice,
-        averagePurchasePrice: null,
-        purchaseExchangeRate: null,
-        profitLossRate: null,
-        riskLevel: input.riskLevel ?? null
-      }
+      data: holdingInitialState({ ...input, symbol, alias })
     });
     return { status: "created" as const };
   }, 5);
@@ -456,11 +445,7 @@ export async function applyManualHoldingTrade(input: {
 export async function deleteManualHolding(symbol: string) {
   const normalized = symbol.toUpperCase();
   const locked = await withMysqlNamedLock(`nxdi:holding:${normalized}`, async () => {
-    const holding = await prisma.portfolioHolding.findUnique({ where: { symbol: normalized } });
-    if (holding && holding.quantity > 0.0000001) return { status: "holding_not_empty" as const };
     await prisma.portfolioHolding.deleteMany({ where: { symbol: normalized } });
-    return { status: "deleted" as const };
   }, 5);
   if (!locked.acquired) throw new Error(`Could not acquire holding lock: ${normalized}`);
-  return locked.value;
 }
