@@ -3,20 +3,9 @@ import { describe, it } from "node:test";
 import {
   deriveRoadmapCategory,
   deriveRoadmapKind,
-  isRoadmapEventMoveDate,
   isRoadmapQueryWindow,
   roadmapInitialStartDate
 } from "../src/infrastructure/roadmap.js";
-
-describe("Given a roadmap event date", () => {
-  it("then accepts past dates for both creation and movement through the future horizon", () => {
-    const today = "2026-07-15";
-
-    assert.equal(isRoadmapEventMoveDate("2025-01-01", today), true);
-    assert.equal(isRoadmapEventMoveDate("2026-08-14", today), true);
-    assert.equal(isRoadmapEventMoveDate("2026-08-15", today), false);
-  });
-});
 
 describe("Given a roadmap viewer date window", () => {
   describe("when the initial window is created", () => {

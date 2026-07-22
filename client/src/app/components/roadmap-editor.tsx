@@ -11,13 +11,19 @@ import {
   Trash2,
   X
 } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { DragEvent, FormEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type {
+  DragEvent,
+  FormEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent
+} from "react";
 import {
   ROADMAP_EVENT_CATEGORIES,
   ROADMAP_EVENT_KINDS,
   addDaysToDateKey,
   roadmapCategoryLabel,
+  roadmapDateKeys,
   roadmapKindLabel,
   stripDisclosureTag
 } from "@/lib/roadmap";
@@ -32,6 +38,9 @@ import { showToast } from "@/app/components/toast";
 
 const DRAG_MIME = "application/x-nxdi-roadmap-item";
 const COLLAPSED_EDITOR_PINS_PER_DATE = 2;
+const EDITOR_DATE_PAGE_DAYS = 30;
+const LOAD_MORE_THRESHOLD_PX = 520;
+const MOUSE_DRAG_THRESHOLD_PX = 5;
 
 export type RoadmapEditorDisclosure = {
   id: string;
@@ -44,7 +53,6 @@ export type RoadmapEditorProps = {
   events: RoadmapEvent[];
   disclosures: RoadmapEditorDisclosure[];
   today: string;
-  horizon: string;
 };
 
 type DragPayload =
@@ -56,6 +64,14 @@ type EditorStatus = {
   text: string;
 };
 
+type MouseDragState = {
+  pointerId: number;
+  captureTarget: Element;
+  startClientX: number;
+  startScrollLeft: number;
+  didDrag: boolean;
+};
+
 function sortEvents(events: RoadmapEvent[]) {
   return [...events].sort(
     (left, right) =>
@@ -64,18 +80,12 @@ function sortEvents(events: RoadmapEvent[]) {
   );
 }
 
-function dateKeysBetween(start: string, end: string) {
-  const dates: string[] = [];
-  let cursor = start;
-
-  // The editor is intentionally bounded to one month. The guard also prevents
-  // malformed server props from causing an unbounded render loop.
-  for (let index = 0; cursor <= end && index < 62; index += 1) {
-    dates.push(cursor);
-    cursor = addDaysToDateKey(cursor, 1);
+function addEditorPageDays(dateKey: string, days: number) {
+  try {
+    return addDaysToDateKey(dateKey, days);
+  } catch {
+    return dateKey;
   }
-
-  return dates;
 }
 
 function formatDateKey(dateKey: string, withYear = false) {
@@ -147,14 +157,12 @@ async function requestJson<T>(url: string, init: RequestInit) {
 
 function RoadmapPinEditor({
   event,
-  horizon,
   busy,
   onClose,
   onSave,
   onDelete
 }: {
   event: RoadmapEvent;
-  horizon: string;
   busy: boolean;
   onClose: () => void;
   onSave: (input: UpdateRoadmapEventInput) => Promise<void>;
@@ -207,7 +215,6 @@ function RoadmapPinEditor({
           <input
             id={`${formId}-date`}
             type="date"
-            max={horizon}
             value={eventDate}
             disabled={busy}
             onChange={(changeEvent) => setEventDate(changeEvent.target.value)}
@@ -277,12 +284,29 @@ function RoadmapPinEditor({
   );
 }
 
-export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEditorProps) {
+export function RoadmapEditor({ events, disclosures, today }: RoadmapEditorProps) {
   const editorId = useId();
   const viewportRef = useRef<HTMLDivElement>(null);
-  const latestPinRef = useRef<HTMLLIElement>(null);
-  const didInitialScrollRef = useRef(false);
+  const initialAnchorDateRef = useRef(
+    events.reduce<string | null>(
+      (latest, event) => latest === null || event.eventDate > latest ? event.eventDate : latest,
+      null
+    ) ?? today
+  );
+  const mouseDragRef = useRef<MouseDragState | null>(null);
+  const suppressClickRef = useRef(false);
+  const suppressClickFrameRef = useRef<number | null>(null);
+  const loadInProgressRef = useRef(false);
+  const pendingPrependRef = useRef<{ scrollLeft: number; scrollWidth: number } | null>(null);
+  const pendingCenterDateRef = useRef<string | null>(initialAnchorDateRef.current);
   const [roadmapEvents, setRoadmapEvents] = useState(() => sortEvents(events));
+  const [rangeStart, setRangeStart] = useState(() =>
+    addEditorPageDays(initialAnchorDateRef.current, -EDITOR_DATE_PAGE_DAYS)
+  );
+  const [rangeEnd, setRangeEnd] = useState(() =>
+    addEditorPageDays(initialAnchorDateRef.current, EDITOR_DATE_PAGE_DAYS)
+  );
+  const [isTimelineDragging, setIsTimelineDragging] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedDisclosureId, setSelectedDisclosureId] = useState(disclosures[0]?.id ?? "");
   const [fallbackDate, setFallbackDate] = useState(today);
@@ -294,19 +318,9 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
   const [status, setStatus] = useState<EditorStatus | null>(null);
 
   const selectedEvent = roadmapEvents.find((event) => event.id === selectedEventId) ?? null;
-  const pastEventDates = useMemo(
-    () =>
-      [...new Set(roadmapEvents.filter((event) => event.eventDate < today).map((event) => event.eventDate))]
-        .sort(),
-    [roadmapEvents, today]
-  );
   const timelineDates = useMemo(
-    () => [...pastEventDates, ...dateKeysBetween(today, horizon)],
-    [horizon, pastEventDates, today]
-  );
-  const latestPinDate = roadmapEvents.reduce<string | null>(
-    (latest, event) => latest === null || event.eventDate > latest ? event.eventDate : latest,
-    null
+    () => roadmapDateKeys(rangeStart, rangeEnd),
+    [rangeEnd, rangeStart]
   );
   const eventsByDate = useMemo(() => {
     const grouped = new Map<string, RoadmapEvent[]>();
@@ -318,23 +332,185 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
     return grouped;
   }, [roadmapEvents]);
 
-  useEffect(() => {
-    if (didInitialScrollRef.current || !latestPinDate) return;
+  useEffect(() => () => {
+    if (suppressClickFrameRef.current !== null) {
+      window.cancelAnimationFrame(suppressClickFrameRef.current);
+    }
+  }, []);
 
-    const frame = window.requestAnimationFrame(() => {
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const pendingPrepend = pendingPrependRef.current;
+    if (pendingPrepend) {
+      const addedWidth = viewport.scrollWidth - pendingPrepend.scrollWidth;
+      viewport.scrollLeft = pendingPrepend.scrollLeft + addedWidth;
+      if (mouseDragRef.current) {
+        mouseDragRef.current.startScrollLeft += addedWidth;
+      }
+      pendingPrependRef.current = null;
+    }
+
+    const centerDate = pendingCenterDateRef.current;
+    if (centerDate) {
+      const target = viewport.querySelector<HTMLElement>(`[data-date="${centerDate}"]`);
+      if (target) {
+        viewport.scrollLeft = Math.max(
+          0,
+          target.offsetLeft - (viewport.clientWidth - target.clientWidth) / 2
+        );
+        pendingCenterDateRef.current = null;
+      }
+    }
+
+    loadInProgressRef.current = false;
+  }, [rangeEnd, rangeStart]);
+
+  function centerDateInTimeline(eventDate: string) {
+    pendingCenterDateRef.current = eventDate;
+
+    if (eventDate < rangeStart || eventDate > rangeEnd) {
+      setRangeStart(addEditorPageDays(eventDate, -EDITOR_DATE_PAGE_DAYS));
+      setRangeEnd(addEditorPageDays(eventDate, EDITOR_DATE_PAGE_DAYS));
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
       const viewport = viewportRef.current;
-      const latestPin = latestPinRef.current;
-      if (!viewport || !latestPin) return;
-
+      const target = viewport?.querySelector<HTMLElement>(`[data-date="${eventDate}"]`);
+      if (!viewport || !target) return;
       viewport.scrollTo({
-        left: Math.max(0, latestPin.offsetLeft - (viewport.clientWidth - latestPin.clientWidth) / 2),
-        behavior: "auto"
+        left: Math.max(0, target.offsetLeft - (viewport.clientWidth - target.clientWidth) / 2),
+        behavior: "smooth"
       });
-      didInitialScrollRef.current = true;
+      pendingCenterDateRef.current = null;
     });
+  }
 
-    return () => window.cancelAnimationFrame(frame);
-  }, [latestPinDate]);
+  function loadMoreDates(direction: -1 | 1) {
+    if (loadInProgressRef.current) return;
+    loadInProgressRef.current = true;
+
+    try {
+      if (direction < 0) {
+        const viewport = viewportRef.current;
+        if (viewport) {
+          pendingPrependRef.current = {
+            scrollLeft: viewport.scrollLeft,
+            scrollWidth: viewport.scrollWidth
+          };
+        }
+        setRangeStart(addDaysToDateKey(rangeStart, -EDITOR_DATE_PAGE_DAYS));
+      } else {
+        setRangeEnd(addDaysToDateKey(rangeEnd, EDITOR_DATE_PAGE_DAYS));
+      }
+    } catch {
+      loadInProgressRef.current = false;
+    }
+  }
+
+  function handleViewportScroll() {
+    const viewport = viewportRef.current;
+    if (!viewport || loadInProgressRef.current) return;
+
+    if (viewport.scrollLeft <= LOAD_MORE_THRESHOLD_PX) {
+      loadMoreDates(-1);
+      return;
+    }
+
+    const remaining = viewport.scrollWidth - viewport.clientWidth - viewport.scrollLeft;
+    if (remaining <= LOAD_MORE_THRESHOLD_PX) loadMoreDates(1);
+  }
+
+  function clearSuppressedClick() {
+    suppressClickRef.current = false;
+    if (suppressClickFrameRef.current !== null) {
+      window.cancelAnimationFrame(suppressClickFrameRef.current);
+      suppressClickFrameRef.current = null;
+    }
+  }
+
+  function suppressDragClick() {
+    clearSuppressedClick();
+    suppressClickRef.current = true;
+    suppressClickFrameRef.current = window.requestAnimationFrame(() => {
+      suppressClickRef.current = false;
+      suppressClickFrameRef.current = null;
+    });
+  }
+
+  function releaseMousePointer(captureTarget: Element, pointerId: number) {
+    if (captureTarget.hasPointerCapture(pointerId)) {
+      captureTarget.releasePointerCapture(pointerId);
+    }
+  }
+
+  function handleViewportPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse" || event.button !== 0 || !event.isPrimary) return;
+    if ((event.target as Element).closest("button, input, select, a, [draggable='true']")) return;
+
+    clearSuppressedClick();
+    const captureTarget = event.target as Element;
+    mouseDragRef.current = {
+      pointerId: event.pointerId,
+      captureTarget,
+      startClientX: event.clientX,
+      startScrollLeft: event.currentTarget.scrollLeft,
+      didDrag: false
+    };
+    captureTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleViewportPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = mouseDragRef.current;
+    if (event.pointerType !== "mouse" || !drag || drag.pointerId !== event.pointerId) return;
+
+    const distanceX = event.clientX - drag.startClientX;
+    if (!drag.didDrag && Math.abs(distanceX) <= MOUSE_DRAG_THRESHOLD_PX) return;
+
+    if (!drag.didDrag) {
+      drag.didDrag = true;
+      setIsTimelineDragging(true);
+    }
+
+    event.preventDefault();
+    event.currentTarget.scrollLeft = drag.startScrollLeft - distanceX;
+  }
+
+  function handleViewportPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = mouseDragRef.current;
+    if (event.pointerType !== "mouse" || !drag || drag.pointerId !== event.pointerId) return;
+
+    if (drag.didDrag) suppressDragClick();
+    mouseDragRef.current = null;
+    setIsTimelineDragging(false);
+    releaseMousePointer(drag.captureTarget, event.pointerId);
+  }
+
+  function handleViewportPointerCancel(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = mouseDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    mouseDragRef.current = null;
+    setIsTimelineDragging(false);
+    releaseMousePointer(drag.captureTarget, event.pointerId);
+  }
+
+  function handleViewportLostPointerCapture(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = mouseDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    mouseDragRef.current = null;
+    setIsTimelineDragging(false);
+  }
+
+  function handleViewportClickCapture(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!suppressClickRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    clearSuppressedClick();
+  }
 
   function duplicateExists(disclosureId: string, eventDate: string, exceptId?: string) {
     return roadmapEvents.some(
@@ -365,10 +541,6 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
       setStatus({ tone: "error", text: "핀으로 만들 공시를 선택해 주세요." });
       return;
     }
-    if (eventDate > horizon) {
-      setStatus({ tone: "error", text: "과거 날짜 또는 오늘부터 30일 후까지 선택해 주세요." });
-      return;
-    }
     if (duplicateExists(disclosureId, eventDate)) {
       setStatus({ tone: "error", text: "같은 공시가 이미 이 날짜에 등록되어 있어요." });
       return;
@@ -390,6 +562,7 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
       setRoadmapEvents((current) => sortEvents([...current, response.event]));
       setSelectedEventId(response.event.id);
       setExpandedDateKeys((current) => new Set(current).add(response.event.eventDate));
+      centerDateInTimeline(response.event.eventDate);
       setStatus({
         tone: "success",
         text: `${formatDateKey(response.event.eventDate)}에 핀을 추가했어요.`
@@ -408,10 +581,6 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
       setStatus({ tone: "success", text: "핀이 이미 이 날짜에 있어요." });
       return;
     }
-    if (eventDate > horizon) {
-      setStatus({ tone: "error", text: "과거 날짜 또는 오늘부터 30일 후까지 이동해 주세요." });
-      return;
-    }
     if (duplicateExists(currentEvent.disclosureId, eventDate, currentEvent.id)) {
       setStatus({ tone: "error", text: "같은 공시가 이미 이 날짜에 등록되어 있어요." });
       return;
@@ -427,6 +596,7 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
       setRoadmapEvents((current) =>
         sortEvents(current.map((event) => (event.id === eventId ? response.event : event)))
       );
+      centerDateInTimeline(response.event.eventDate);
       setStatus({
         tone: "success",
         text: `${formatDateKey(response.event.eventDate)}로 핀을 옮겼어요.`
@@ -459,6 +629,9 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
       setRoadmapEvents((current) =>
         sortEvents(current.map((event) => (event.id === eventId ? response.event : event)))
       );
+      if (response.event.eventDate !== currentEvent.eventDate) {
+        centerDateInTimeline(response.event.eventDate);
+      }
       setStatus({ tone: "success", text: "핀 변경사항을 저장했어요." });
     } catch (error) {
       setError(error, "핀을 저장하지 못했습니다.");
@@ -522,7 +695,7 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
   }
 
   function allowDateDrop(eventObject: DragEvent, eventDate: string) {
-    if (busy || eventDate > horizon) return;
+    if (busy) return;
     eventObject.preventDefault();
     eventObject.dataTransfer.dropEffect = dragging?.type === "event" ? "move" : "copy";
     setDropTargetDate(eventDate);
@@ -566,11 +739,9 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
         <div>
           <h2 id={`${editorId}-title`}>로드맵 편집</h2>
         </div>
-        <div className="roadmap-editor-window" aria-label="편집 가능한 기간">
+        <div className="roadmap-editor-window" aria-label="편집 가능한 날짜">
           <CalendarDays size={17} aria-hidden="true" />
-          <span>
-            {formatDateKey(today, true)}–{formatDateKey(horizon, true)}
-          </span>
+          <span>날짜 제한 없음</span>
         </div>
       </header>
 
@@ -607,7 +778,6 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
                 <input
                   id={`${editorId}-fallback-date`}
                   type="date"
-                  max={horizon}
                   value={fallbackDate}
                   disabled={busy}
                   onChange={(event) => setFallbackDate(event.target.value)}
@@ -663,14 +833,21 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
             <header className="roadmap-editor-board-header">
               <div>
                 <span className="roadmap-editor-eyebrow">2. 날짜에 놓기</span>
-                <h3 id={`${editorId}-timeline-title`}>한 달 로드맵</h3>
+                <h3 id={`${editorId}-timeline-title`}>전체 로드맵</h3>
               </div>
             </header>
 
             <div
-              className="roadmap-editor-viewport"
+              className={`roadmap-editor-viewport${isTimelineDragging ? " is-dragging" : ""}`}
               ref={viewportRef}
               tabIndex={0}
+              onScroll={handleViewportScroll}
+              onPointerDown={handleViewportPointerDown}
+              onPointerMove={handleViewportPointerMove}
+              onPointerUp={handleViewportPointerUp}
+              onPointerCancel={handleViewportPointerCancel}
+              onLostPointerCapture={handleViewportLostPointerCapture}
+              onClickCapture={handleViewportClickCapture}
               aria-label="가로 로드맵, 좌우로 스크롤할 수 있습니다"
             >
               <ol className="roadmap-track roadmap-editor-track">
@@ -683,11 +860,9 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
                   const hiddenPinCount = dateEvents.length - displayedEvents.length;
                   const isPast = eventDate < today;
                   const isToday = eventDate === today;
-                  const editable = eventDate <= horizon;
                   return (
                     <li
                       key={eventDate}
-                      ref={eventDate === latestPinDate ? latestPinRef : undefined}
                       className={[
                         "roadmap-stop",
                         "roadmap-editor-stop",
@@ -696,8 +871,8 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
                         dropTargetDate === eventDate ? "roadmap-editor-stop--drop-active" : ""
                       ].filter(Boolean).join(" ")}
                       data-date={eventDate}
-                      onDragOver={editable ? (event) => allowDateDrop(event, eventDate) : undefined}
-                      onDrop={editable ? (event) => void dropOnDate(event, eventDate) : undefined}
+                      onDragOver={(event) => allowDateDrop(event, eventDate)}
+                      onDrop={(event) => void dropOnDate(event, eventDate)}
                     >
                       <div className="roadmap-pin-stack roadmap-editor-pin-stack">
                         {displayedEvents.map((roadmapEvent) => {
@@ -739,7 +914,7 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
                             {isExpanded ? "접기" : `${hiddenPinCount}개 더 보기`}
                           </button>
                         ) : null}
-                        {editable && dateEvents.length === 0 ? (
+                        {dateEvents.length === 0 ? (
                           <span className="roadmap-editor-drop-hint" aria-hidden="true">여기에 놓기</span>
                         ) : null}
                       </div>
@@ -782,7 +957,6 @@ export function RoadmapEditor({ events, disclosures, today, horizon }: RoadmapEd
             <RoadmapPinEditor
               key={selectedEvent.id}
               event={selectedEvent}
-              horizon={horizon}
               busy={busy}
               onClose={() => setSelectedEventId(null)}
               onSave={(input) => savePin(selectedEvent.id, input)}

@@ -313,7 +313,7 @@ export async function adminDashboardReadModel() {
     readDividendRecords(),
     readMonthlyDividendRecords(),
     readDisclosures(),
-    readRoadmapEvents({ through: roadmapHorizon })
+    readRoadmapEvents()
   ]);
   const completedInvestments = store.investmentIntents.filter((intent) => intent.status === "COMPLETED");
   const completedWithdrawals = store.withdrawalIntents.filter((intent) => intent.status === "COMPLETED");

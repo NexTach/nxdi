@@ -165,14 +165,6 @@ export function isRoadmapQueryWindow(fromDateKey: string, throughDateKey: string
   return throughDateKey <= addDaysToDateKey(fromDateKey, ROADMAP_HORIZON_DAYS - 1);
 }
 
-export function isRoadmapEventMoveDate(
-  dateKey: string,
-  fromDateKey = kstDateKey()
-) {
-  if (!isValidDateKey(dateKey)) return false;
-  return dateKey <= roadmapHorizonEndDate(fromDateKey);
-}
-
 export function roadmapDateKeys(
   fromDateKey = kstDateKey(),
   throughDateKey = roadmapHorizonEndDate(fromDateKey)

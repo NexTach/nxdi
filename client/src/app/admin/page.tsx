@@ -123,7 +123,6 @@ export default async function AdminPage() {
     disclosures,
     roadmapEvents,
     roadmapToday,
-    roadmapHorizon,
     dividendPrincipalsByMonth,
     policy
   } = dashboard;
@@ -165,7 +164,6 @@ export default async function AdminPage() {
         disclosures={disclosures}
         events={roadmapEvents}
         today={roadmapToday}
-        horizon={roadmapHorizon}
       />
 
       <SectionHeader

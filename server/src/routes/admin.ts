@@ -30,7 +30,6 @@ import {
   deleteRoadmapEvent,
   deriveRoadmapCategory,
   deriveRoadmapKind,
-  isRoadmapEventMoveDate,
   isValidDateKey,
   updateRoadmapEvent
 } from "../infrastructure/roadmap.js";
@@ -337,9 +336,6 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       label: z.string().trim().max(160).optional()
     }).strict().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "입력값을 확인해 주세요.", fields: parsed.error.flatten().fieldErrors });
-    if (!isRoadmapEventMoveDate(parsed.data.eventDate)) {
-      return reply.code(400).send({ error: "핀은 과거 날짜부터 오늘 기준 30일 후까지 추가할 수 있습니다." });
-    }
     try {
       const disclosure = await readDisclosure(parsed.data.disclosureId);
       if (!disclosure) return reply.code(404).send({ error: "공시를 찾을 수 없습니다." });
@@ -369,9 +365,6 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       label: z.string().trim().max(160).optional()
     }).strict().refine((value) => Object.keys(value).length > 0).safeParse(request.body);
     if (!id.success || !body.success) return reply.code(400).send({ error: "입력값을 확인해 주세요." });
-    if (body.data.eventDate && !isRoadmapEventMoveDate(body.data.eventDate)) {
-      return reply.code(400).send({ error: "핀은 과거 날짜 또는 오늘부터 30일 후까지 이동할 수 있습니다." });
-    }
     try {
       return { event: await updateRoadmapEvent(id.data, body.data) };
     } catch (error) {

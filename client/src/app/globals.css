@@ -3919,7 +3919,9 @@ button.roadmap-today-button {
 }
 
 .roadmap-viewport.is-dragging,
-.roadmap-viewport.is-dragging * {
+.roadmap-viewport.is-dragging *,
+.roadmap-editor-viewport.is-dragging,
+.roadmap-editor-viewport.is-dragging * {
   cursor: grabbing !important;
   scroll-snap-type: none;
   user-select: none;
@@ -4469,6 +4471,7 @@ button.roadmap-editor-add-button {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--tds-radius-md);
+  cursor: grab;
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-inline: contain;

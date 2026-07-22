@@ -16,8 +16,7 @@ describe("RoadmapEditor", () => {
         createdAt: "2026-07-01T00:00:00.000Z"
       }],
       events: [],
-      today: "2026-07-15",
-      horizon: "2026-08-14"
+      today: "2026-07-15"
     }));
 
     assert.match(markup, /id="[^"]+-fallback-date"[^>]*type="date"/);
