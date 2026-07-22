@@ -129,8 +129,10 @@ export function RoadmapTimeline({
   }, [visibleEvents]);
 
   const dateKeys = useMemo(
-    () => roadmapDateKeys(rangeStart, rangeEnd),
-    [rangeEnd, rangeStart]
+    () => roadmapDateKeys(rangeStart, rangeEnd).filter(
+      (dateKey) => dateKey >= todayDateKey || eventsByDate.has(dateKey)
+    ),
+    [eventsByDate, rangeEnd, rangeStart, todayDateKey]
   );
 
   useEffect(() => {
@@ -165,7 +167,11 @@ export function RoadmapTimeline({
     const viewport = viewportRef.current;
     if (!pending || !viewport) return;
 
-    viewport.scrollLeft = pending.scrollLeft + viewport.scrollWidth - pending.scrollWidth;
+    const addedWidth = viewport.scrollWidth - pending.scrollWidth;
+    viewport.scrollLeft = pending.scrollLeft + addedWidth;
+    if (mouseDragRef.current) {
+      mouseDragRef.current.startScrollLeft += addedWidth;
+    }
     pendingPrependRef.current = null;
   }, [rangeStart]);
 
@@ -250,6 +256,11 @@ export function RoadmapTimeline({
   function scrollTimeline(direction: -1 | 1) {
     const viewport = viewportRef.current;
     if (!viewport) return;
+
+    if (direction < 0 && viewport.scrollLeft <= LOAD_MORE_THRESHOLD_PX) {
+      void loadMoreDates(-1);
+      return;
+    }
 
     viewport.scrollBy({
       left: viewport.clientWidth * 0.72 * direction,
@@ -337,7 +348,11 @@ export function RoadmapTimeline({
     }
 
     event.preventDefault();
-    event.currentTarget.scrollLeft = drag.startScrollLeft - distanceX;
+    const nextScrollLeft = drag.startScrollLeft - distanceX;
+    event.currentTarget.scrollLeft = nextScrollLeft;
+    if (nextScrollLeft <= 0 && !loadInProgressRef.current) {
+      void loadMoreDates(-1);
+    }
   }
 
   function handleViewportPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
