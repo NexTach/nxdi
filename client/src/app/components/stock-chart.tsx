@@ -63,13 +63,17 @@ export function CandleChart({
   size = "compact",
   label,
   valueFormat = "number",
-  dateGranularity = "day"
+  dateGranularity = "day",
+  minBodyHeight = 2,
+  bodyRadius
 }: {
   candles: MarketCandle[];
   size?: "compact" | "detail";
   label?: string;
   valueFormat?: ValueFormat;
   dateGranularity?: DateGranularity;
+  minBodyHeight?: number;
+  bodyRadius?: number;
 }) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -230,8 +234,15 @@ export function CandleChart({
             : candle.close < candle.open
               ? "down"
               : "flat";
-          const bodyY = Math.min(y(candle.open), y(candle.close));
-          const bodyHeight = Math.max(2, Math.abs(y(candle.open) - y(candle.close)));
+          const openY = y(candle.open);
+          const closeY = y(candle.close);
+          const rawBodyHeight = Math.abs(openY - closeY);
+          const bodyHeight = Math.max(minBodyHeight, rawBodyHeight);
+          const centeredBodyY = Math.min(openY, closeY) - (bodyHeight - rawBodyHeight) / 2;
+          const bodyY = Math.max(
+            metrics.topPadding,
+            Math.min(centeredBodyY, metrics.topPadding + metrics.plotHeight - bodyHeight)
+          );
 
           return (
             <g
@@ -255,7 +266,7 @@ export function CandleChart({
                 y={bodyY}
                 width={metrics.candleWidth}
                 height={bodyHeight}
-                rx={metrics.dense ? 0.8 : 2}
+                rx={bodyRadius ?? (metrics.dense ? 0.8 : 2)}
               />
             </g>
           );

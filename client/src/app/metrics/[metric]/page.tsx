@@ -9,6 +9,7 @@ import {
   Metric,
   Navigation,
   SectionHeader,
+  TextLink,
   Top
 } from "@/app/components/tds";
 import { getMetric } from "@/lib/api";
@@ -68,6 +69,12 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
   const currentDividendYield = portfolioDividend.dividendYield;
   const valueFormat = metric === "daily-change" ? "krw" : "percent";
   const labels = METRIC_LABELS[metric];
+  const linkedMetricTitle = (target: MetricSlug) =>
+    metric === target ? (
+      METRIC_LABELS[target].title
+    ) : (
+      <TextLink href={`/metrics/${target}`}>{METRIC_LABELS[target].title}</TextLink>
+    );
 
   return (
     <AppShell>
@@ -87,21 +94,16 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
         />
       </Grid>
 
-      <SectionHeader
-        title={metric === "daily-change" ? "평가금액 캔들 차트" : "캔들 차트"}
-        description={
-          metric === "dividend-yield"
-            ? "과거 월은 실 배당 기록을 연환산하고, 최신 월은 현재 포트폴리오 연 예상 배당 기준입니다."
-            : "과거 날짜는 확정 마감 스냅샷, 최신 날짜는 현재 저장된 평가금액 기준입니다."
-        }
-      />
+      <SectionHeader title="세부 차트" />
 
       <CandleChart
         candles={candles}
-        label={metric === "daily-change" ? "포트폴리오 평가금액 상세 캔들 차트" : `${labels.title} 상세 캔들 차트`}
+        label={`${labels.title} 세부 차트`}
         size="detail"
         valueFormat={valueFormat}
         dateGranularity={metric === "dividend-yield" ? "month" : "day"}
+        minBodyHeight={metric === "daily-change" ? 5 : undefined}
+        bodyRadius={metric === "daily-change" ? 1 : undefined}
       />
 
       <SectionHeader title="계산 기준" description="관리자 포트폴리오, 시장 가격, 일별 평가금액 스냅샷을 조합한 값입니다." />
@@ -109,18 +111,18 @@ export default async function MetricDetailPage({ params }: MetricDetailProps) {
       <List>
         {metric === "daily-change" ? (
           <ListRow
-            title="오늘 등락률"
+            title={linkedMetricTitle("daily-change")}
             description="현재 보유 평가금액 총합과 보유 종목별 전일 종가 기준 평가금액 총합 비교"
             value={<RatePill value={currentRate} />}
           />
         ) : null}
         <ListRow
-          title="보유 수익률"
+          title={linkedMetricTitle("holding-return")}
           description="현재 평가금액과 매입환율이 반영된 원화 매입원금 기준"
           value={<RatePill value={portfolioDividend.totalReturnRate} />}
         />
         <ListRow
-          title="배당수익률"
+          title={linkedMetricTitle("dividend-yield")}
           description="과거 월 실 배당 기록의 연환산액 또는 현재 연 예상 배당금을 평가금액으로 나눈 값"
           value={<RatePill value={currentDividendYield} />}
         />
