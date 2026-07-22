@@ -8,6 +8,9 @@ import {
   type HoldingTradeUpdate
 } from "../src/application/apply-holding-trade-service.js";
 
+const FIXED_EXECUTION_TIME = "2026-07-23T01:00:00.000Z";
+const fixedNow = () => new Date(FIXED_EXECUTION_TIME);
+
 function serialRepository(initial: HoldingTradeState) {
   let state: HoldingTradeState | null = { ...initial };
   let queue = Promise.resolve();
@@ -55,15 +58,14 @@ describe("ApplyHoldingTradeService", () => {
               async recordExecution(values) { executions.push(values); }
             });
           }
-        });
+        }, fixedNow);
 
         const result = await service.execute({
           symbol: "NEW",
           side: "BUY",
           quantity: 2,
           orderPrice: 11,
-          exchangeRate: 1400,
-          executedAt: "2026-07-15T01:00:00.000Z"
+          exchangeRate: 1400
         });
 
         assert.equal(result.status, "updated");
@@ -71,6 +73,7 @@ describe("ApplyHoldingTradeService", () => {
         assert.equal(state.averagePurchasePrice, 11);
         assert.equal(state.purchaseExchangeRate, 1400);
         assert.equal(executions.length, 1);
+        assert.equal(executions[0]?.executedAt, FIXED_EXECUTION_TIME);
       });
     });
   });
@@ -85,7 +88,7 @@ describe("ApplyHoldingTradeService", () => {
           averagePurchasePrice: 15,
           purchaseExchangeRate: 1300
         });
-        const service = new ApplyHoldingTradeService(fake.repository);
+        const service = new ApplyHoldingTradeService(fake.repository, fixedNow);
         const results = await Promise.all([
           service.execute({ symbol: "SCHD", side: "SELL", quantity: 6, orderPrice: 20, exchangeRate: 1_400 }),
           service.execute({ symbol: "SCHD", side: "SELL", quantity: 6, orderPrice: 20, exchangeRate: 1_400 })
@@ -109,7 +112,7 @@ describe("ApplyHoldingTradeService", () => {
           purchaseExchangeRate: 1000,
           riskLevel: "LOW"
         });
-        const result = await new ApplyHoldingTradeService(fake.repository).execute({
+        const result = await new ApplyHoldingTradeService(fake.repository, fixedNow).execute({
           symbol: "SCHD",
           side: "BUY",
           quantity: 10,
@@ -141,15 +144,14 @@ describe("ApplyHoldingTradeService", () => {
           riskLevel: "LOW"
         });
 
-        const result = await new ApplyHoldingTradeService(fake.repository).execute({
+        const result = await new ApplyHoldingTradeService(fake.repository, fixedNow).execute({
           symbol: "SCHD",
           side: "GIFT_IN",
           quantity: 5,
           orderPrice: 20,
           exchangeRate: 1500,
           feeKrw: 500,
-          taxKrw: 100,
-          executedAt: "2026-07-22T01:00:00.000Z"
+          taxKrw: 100
         });
 
         assert.equal(result.status, "updated");
@@ -163,7 +165,7 @@ describe("ApplyHoldingTradeService", () => {
         assert.equal(fake.executions[0]?.cashAmountKrw, 0);
         assert.equal(fake.executions[0]?.feeKrw, 0);
         assert.equal(fake.executions[0]?.taxKrw, 0);
-        assert.equal(fake.executions[0]?.executedAt, "2026-07-22T01:00:00.000Z");
+        assert.equal(fake.executions[0]?.executedAt, FIXED_EXECUTION_TIME);
       });
     });
   });
@@ -181,7 +183,7 @@ describe("ApplyHoldingTradeService", () => {
           riskLevel: "LOW"
         });
 
-        const result = await new ApplyHoldingTradeService(fake.repository).execute({
+        const result = await new ApplyHoldingTradeService(fake.repository, fixedNow).execute({
           symbol: "005930",
           side: "GIFT_IN",
           quantity: 4,
@@ -211,7 +213,7 @@ describe("ApplyHoldingTradeService", () => {
           riskLevel: null
         });
 
-        const result = await new ApplyHoldingTradeService(fake.repository).execute({
+        const result = await new ApplyHoldingTradeService(fake.repository, fixedNow).execute({
           symbol: "SCHD",
           side: "GIFT_IN",
           quantity: 5,

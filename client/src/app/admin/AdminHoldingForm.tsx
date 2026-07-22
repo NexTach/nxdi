@@ -62,11 +62,6 @@ const adjustmentLabels: Record<HoldingAdjustmentType, string> = {
   GIFT_IN: "증여받음"
 };
 
-function currentKstDateTimeLocal() {
-  const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  return now.toISOString().slice(0, 16);
-}
-
 function profitLossRate(lastPrice?: number, averagePurchasePrice?: number) {
   if (!lastPrice || !averagePurchasePrice) return null;
   return ((lastPrice - averagePurchasePrice) / averagePurchasePrice) * 100;
@@ -122,7 +117,6 @@ function adjustmentCopy(side: HoldingAdjustmentType, currency: "KRW" | "USD") {
       pricePlaceholder: `주당 취득가 (예: ${priceExample})`,
       exchangeLabel: "취득 기준환율 (₩)",
       exchangePlaceholder: "증여일 적용환율 (예: 1,380)",
-      occurredAtLabel: "증여받은 일시 (KST)",
       submitLabel: "증여 반영"
     };
   }
@@ -138,7 +132,6 @@ function adjustmentCopy(side: HoldingAdjustmentType, currency: "KRW" | "USD") {
     pricePlaceholder: `예: ${priceExample}`,
     exchangeLabel: "실제 체결환율 (₩)",
     exchangePlaceholder: "증권사 체결환율 (예: 1,380)",
-    occurredAtLabel: "실제 체결시각 (KST)",
     submitLabel: `${action} 반영`
   };
 }
@@ -766,16 +759,6 @@ export function AdminHoldingForm({
                     </Field>
                   </>
                 ) : null}
-                <Field htmlFor={`trade-executed-at-${symbol}`} label={activeAdjustmentCopy.occurredAtLabel}>
-                  <input
-                    id={`trade-executed-at-${symbol}`}
-                    key={tradeForm.side}
-                    name="executedAt"
-                    type="datetime-local"
-                    defaultValue={currentKstDateTimeLocal()}
-                    required
-                  />
-                </Field>
               </div>
               <div className="holding-trade-result">
                 <ComputedValue

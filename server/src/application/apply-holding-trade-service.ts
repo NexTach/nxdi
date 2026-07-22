@@ -53,7 +53,10 @@ export type HoldingTradeResult =
 const MIN_REMAINING_QUANTITY = 0.0000001;
 
 export class ApplyHoldingTradeService {
-  constructor(private readonly repository: HoldingTradeRepository) {}
+  constructor(
+    private readonly repository: HoldingTradeRepository,
+    private readonly now: () => Date = () => new Date()
+  ) {}
 
   execute(input: {
     symbol: string;
@@ -63,7 +66,6 @@ export class ApplyHoldingTradeService {
     exchangeRate?: number;
     feeKrw?: number;
     taxKrw?: number;
-    executedAt?: string;
   }): Promise<HoldingTradeResult> {
     const symbol = input.symbol.trim().toUpperCase();
     return this.repository.withSymbolTransaction(symbol, async (transaction) => {
@@ -94,7 +96,7 @@ export class ApplyHoldingTradeService {
           : input.side === "BUY"
             ? grossAmountKrw + feeKrw + taxKrw
             : Math.max(grossAmountKrw - feeKrw - taxKrw, 0),
-        executedAt: input.executedAt ?? new Date().toISOString()
+        executedAt: this.now().toISOString()
       } satisfies HoldingTradeExecution;
 
       if (input.side === "SELL") {

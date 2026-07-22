@@ -423,7 +423,6 @@ export async function applyManualHoldingTrade(input: {
   exchangeRate?: number;
   feeKrw?: number;
   taxKrw?: number;
-  executedAt?: string;
 }) {
   const symbol = input.symbol.toUpperCase();
   const service = new ApplyHoldingTradeService({

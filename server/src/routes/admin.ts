@@ -57,17 +57,6 @@ function adminSuccess(reply: FastifyReply, id: string, title: string) {
   return redirectWithFlash(reply, "/admin", successFlash(id, title));
 }
 
-const kstDateTimeSchema = z.string().trim().min(1).transform((value, context) => {
-  const hasZone = /(Z|[+-]\d{2}:\d{2})$/.test(value);
-  const seconds = /T\d{2}:\d{2}$/.test(value) ? ":00" : "";
-  const date = new Date(hasZone ? value : `${value}${seconds}+09:00`);
-  if (Number.isNaN(date.getTime())) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: "invalid datetime" });
-    return z.NEVER;
-  }
-  return date.toISOString();
-});
-
 const holdingSchema = z.object({
   symbol: z.string().trim().min(1).max(20),
   name: z.string().trim().min(1).max(120),
@@ -117,8 +106,7 @@ const tradeSchema = z.object({
   orderPrice: z.coerce.number().positive(),
   exchangeRate: z.preprocess((value) => value === "" ? undefined : value, z.coerce.number().min(500).max(3000).optional()),
   feeKrw: z.coerce.number().int().nonnegative().default(0),
-  taxKrw: z.coerce.number().int().nonnegative().default(0),
-  executedAt: kstDateTimeSchema
+  taxKrw: z.coerce.number().int().nonnegative().default(0)
 });
 
 const disclosureTradeSchema = z.object({
@@ -200,8 +188,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       orderPrice: parsed.data.orderPrice,
       exchangeRate: parsed.data.exchangeRate,
       feeKrw: parsed.data.feeKrw,
-      taxKrw: parsed.data.taxKrw,
-      executedAt: parsed.data.executedAt
+      taxKrw: parsed.data.taxKrw
     });
     const errors: Partial<Record<typeof result.status, string>> = {
       not_found: "trade_not_found",
